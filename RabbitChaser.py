@@ -21,8 +21,8 @@ calorie reserve      y        y      int       n
 ++V0.2 get basics running
 ++V0.3 add controls for wolf
 ++V0.4 controls testing and tweaking
-V0.5 edit rabbits to flee from wolf
-V0.6 environment?
+++V0.5 edit rabbits to flee from wolf
+V0.6 try pictures for the animals
 V? ?
 """
 WIDTH = 1050
@@ -30,8 +30,10 @@ HEIGHT = 420
 NOVISION = (66,66,66)
 BACKGROUND = (255, 255, 255)
 RABBITS = []
+WOLF = None
 CALMAX = 1400
 STATS = dict()
+IMAGES = dict()
 screen = None
 
 
@@ -79,10 +81,13 @@ class animal:
 		oldCoordinates = self.coordinates
 		xdiff = self.coordinates[0]-TargetCoordinates[0] 
 		ydiff = self.coordinates[1]-TargetCoordinates[1] 
+		direction = None
 		if xdiff < -3: # wolf to the right
 			self.coordinates[0] = oldCoordinates[0]-self.speed
+			direction = 'Left'
 		elif xdiff > 3:	# wolf to the left
 			self.coordinates[0] = oldCoordinates[0]+self.speed
+			direction = 'Right'
 		else:
 			self.coordinates[0] = oldCoordinates[0]
 		if ydiff < -3: # wolf below
@@ -92,6 +97,7 @@ class animal:
 		else:
 			self.coordinates[1] = oldCoordinates[1]
 		self.checkCoor()
+		return (direction)
 
 	def checkCoor(self):
 		"""
@@ -99,28 +105,28 @@ class animal:
 		"""
 		global screen
 		reTry = True
-		if self.coordinates[0] >= WIDTH:
-			self.coordinates[0] = WIDTH - random.randint(1,3)
-		elif self.coordinates[0] <= 0:
-			self.coordinates[0] = random.randint(1,3)
-		if self.coordinates[1] >= HEIGHT:
-			self.coordinates[1] = HEIGHT - random.randint(1,3)
-		elif self.coordinates[1] <= 0:
-			self.coordinates[1] = random.randint(1,3)
+		if self.coordinates[0] >= WIDTH-self.size[0]:
+			self.coordinates[0] = WIDTH-self.size[0] - random.randint(1,3)
+		elif self.coordinates[0] <= 0+self.size[0]:
+			self.coordinates[0] = self.size[0] + random.randint(1,3)
+		if self.coordinates[1] >= HEIGHT - self.size[1]:
+			self.coordinates[1] = HEIGHT - self.size[1] - random.randint(1,3)
+		elif self.coordinates[1] <= 0 + self.size[1]:
+			self.coordinates[1] = random.randint(1,3) + self.size[1]
 		if screen.get_at(self.coordinates) == BACKGROUND or screen.get_at(self.coordinates) == NOVISION:
 			reTry = False
 		while reTry == True:
 			# checks if pixel background color (->empty) or plant color 
 			oldCoordinates = self.coordinates
 			self.coordinates = [oldCoordinates[0]+random.randrange(-2,3), oldCoordinates[1]+random.randrange(-2,3) ]
-			if self.coordinates[0] >= WIDTH:
-				self.coordinates[0] = WIDTH - random.randint(1,3)
-			elif self.coordinates[0] <= 0:
-				self.coordinates[0] = random.randint(1,3)
-			if self.coordinates[1] >= HEIGHT:
-				self.coordinates[1] = HEIGHT - random.randint(1,3)
-			elif self.coordinates[1] <= 0:
-				self.coordinates[1] = random.randint(1,3)
+			if self.coordinates[0] >= WIDTH-self.size[0]:
+				self.coordinates[0] = WIDTH-self.size[0] - random.randint(1,3)
+			elif self.coordinates[0] <= 0+self.size[0]:
+				self.coordinates[0] = self.size[0] + random.randint(1,3)
+			if self.coordinates[1] >= HEIGHT - self.size[1]:
+				self.coordinates[1] = HEIGHT - self.size[1] - random.randint(1,3)
+			elif self.coordinates[1] <= 0 + self.size[1]:
+				self.coordinates[1] = random.randint(1,3) + self.size[1]
 			if screen.get_at(self.coordinates) == BACKGROUND or screen.get_at(self.coordinates) == NOVISION:
 				reTry = False
 					
@@ -132,8 +138,11 @@ class wolf(animal):
 		super().__init__(number, color, coordinates)
 		self.coordinates = coordinates
 		self.perception = 135
-		self.speed = 2
-		#self.vision = pygame.Surface()
+		self.speed = 3
+		self.size = (20,15)
+		tempimage = pygame.image.load("res/wolf_running.png").convert()
+		self.image = pygame.transform.smoothscale(tempimage, self.size)		
+		self.rect = pygame.Rect (coordinates, self.size)
 
 	def update(self):
 		"""
@@ -146,12 +155,11 @@ class wolf(animal):
 		global STATS
 		if self.calReserve < 1: #if calories under 1, starve
 			self.alive = False
-			#print('wolf ' + str(self.number) + ' starved')
-			STATS['wolves starved'] = STATS['wolves starved'] + 1
+			print('wolf ' + str(self.number) + ' starved')
 			STATS['wolves'] = STATS['wolves'] - 1
 		else:				
-			xRange = range(self.coordinates[0] - 6, self.coordinates[0] + 7)
-			yRange = range(self.coordinates[1] - 5, self.coordinates[1] + 6)
+			xRange = range(self.coordinates[0] - 6, self.coordinates[0] + 27) # 6 + 1 + 20(size)
+			yRange = range(self.coordinates[1] - 5, self.coordinates[1] + 21) # 5 + 1 + 15(size)
 			for i, animal in enumerate(RABBITS):
 				if animal.coordinates[0] in xRange and animal.coordinates[1] in yRange:
 					if animal.coordinates[1] in range(self.coordinates[1] - 5, self.coordinates[1] + 6):
@@ -181,32 +189,40 @@ class rabbit(animal):
 		if reproduction time, mating mode
 		else move randomly
 	"""
+	size = (10,10)
+
 	def __init__(self, number, color, coordinates):
 		super().__init__(number, color, coordinates)
 		self.coordinates = coordinates
-		self.repRate = 15
+		self.repRate = 25
 		self.offspring = 4
+		self.image = IMAGES['rabbit_chill']
+		self.rect = pygame.Rect (coordinates, self.size)
 
 	def update(self):
 		oldCoordinates = self.coordinates
-		minX = self.coordinates[0] - self.perception
-		maxX = self.coordinates[0] + self.perception + 1
-		minY = self.coordinates[1] - self.perception
-		maxY = self.coordinates[1] + self.perception + 1
+		minX = self.coordinates[0] - self.perception - self.size [0]
+		maxX = self.coordinates[0] + self.perception + self.size [0] + 1
+		minY = self.coordinates[1] - self.perception - self.size [1]
+		maxY = self.coordinates[1] + self.perception + self.size [1] + 1
 		fleeing = False
-		for animal in enumerate(RABBITS): #if wolf close, flee
-			if isinstance(animal[1], wolf) and animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive == True:
-				# run you fool!
-				fleeing = True
-				self.avoid(animal[1].coordinates)
-				break				
+		if WOLF.coordinates[0] in range(minX, maxX) and WOLF.coordinates[1] in range(minY, maxY):
+			# run you fool!
+			fleeing = True
+			direction = self.avoid(WOLF.coordinates)	
+			if direction == 'Right':
+				self.image = IMAGES['rabbit_fleeing_right']
+			else:
+				self.image = IMAGES['rabbit_fleeing_left']
 		if fleeing == False:
+			if not self.image == IMAGES['rabbit_chill']	:
+				self.image = IMAGES['rabbit_chill']	
 			if self.repTime > self.repRate and len(RABBITS)< 150:	# rabbit: mating mode
 				self.speed = 2
-				minX = self.coordinates[0] - self.perception - 20
-				maxX = self.coordinates[0] + self.perception + 21
-				minY = self.coordinates[1] - self.perception - 20
-				maxY = self.coordinates[1] + self.perception + 21
+				minX = self.coordinates[0] - self.perception - self.size [0] - 20
+				maxX = self.coordinates[0] + self.perception + self.size [0] + 21
+				minY = self.coordinates[1] - self.perception - self.size [1] - 20
+				maxY = self.coordinates[1] + self.perception + self.size [1] + 21
 				found = False
 				chaser = random.randint (1,4)	# simplified approach to not have both RABBITS chase each other, as these leads to both moving in parallel
 				if chaser == 2:
@@ -233,20 +249,29 @@ class rabbit(animal):
 				self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-3,4), oldCoordinates[1]+self.speed*random.randrange(-3,4) ]
 				self.checkCoor()
 
+
 def main():
 	global screen
 	global ANIMAL
 	global STATS
+	global WOLF
+	global IMAGES
 	STATS = {
 	'rabbits': 0,
-	'rabbits eaten': 0,
-	'rabbits starved' : 0 }
+	'rabbits eaten': 0}
 	clock = pygame.time.Clock()
 	pygame.init()
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
+	tempimage = pygame.image.load("res/rabbit.png").convert()
+	image_chill = pygame.transform.smoothscale(tempimage, rabbit.size)	
+	IMAGES['rabbit_chill'] = image_chill
+	tempimage = pygame.image.load("res/rabbit_running.png").convert()	
+	image_fleeing = pygame.transform.smoothscale(tempimage, rabbit.size)	
+	IMAGES['rabbit_fleeing_left'] = image_fleeing
+	IMAGES['rabbit_fleeing_right'] = image_fleeing.flip()
 	randCoordinates = [random.randrange(1,WIDTH), random.randrange(1, HEIGHT)]
-	Wolf = wolf(1, (0,0,0), randCoordinates)	#number, Color (black)
-	for i in range (1,30):
+	WOLF = wolf(1, (0,0,0), randCoordinates)	#number, Color (black)
+	for i in range (1,25):
 		randCoordinates = [random.randrange(1,WIDTH), random.randrange(1, HEIGHT)]
 		Rabbit = rabbit(i, (255,0,0), randCoordinates)	#number, Color (red)
 		RABBITS.append (Rabbit)
@@ -259,7 +284,7 @@ def main():
 	pygame.display.set_caption(caption)
 	while 1:
 		screen.fill(NOVISION)
-		pygame.draw.circle(screen, BACKGROUND, Wolf.coordinates, Wolf.perception) # draws a white circle around the wolf with its perception range as radius
+		pygame.draw.circle(screen, BACKGROUND, WOLF.coordinates, WOLF.perception) # draws a white circle around the wolf with its perception range as radius
 		for event in pygame.event.get():
 			if event.type == CAPTIONEVENT:
 				caption = ' rabbits: ' + str(STATS['rabbits']) + '   rabbits eaten: ' + str(STATS['rabbits eaten'])
@@ -270,26 +295,26 @@ def main():
 		for i, animal in enumerate(RABBITS):
 			if animal.alive:
 				if not screen.get_at(animal.coordinates) == NOVISION:
-					screen.blit(animal.pixel, animal.coordinates)	# moves the pixel to new coordinates(coordinates moved in class method)
+					screen.blit(animal.image, animal.coordinates)	# moves the pixel to new coordinates(coordinates moved in class method)
 				animal.update()
 				if not animal.alive:
 					del RABBITS[i]
-		screen.blit(Wolf.pixel, Wolf.coordinates)
-		Wolf.update()
+		screen.blit(WOLF.image, WOLF.coordinates)
+		WOLF.update()
 		pygame.display.flip()
 		Keys = pygame.key.get_pressed()
 		if Keys[pygame.K_w] == True:
-			Wolf.coordinates[1] = Wolf.coordinates[1] - Wolf.speed
-			Wolf.checkBorders()
+			WOLF.coordinates[1] = WOLF.coordinates[1] - WOLF.speed
+			WOLF.checkBorders()
 		if Keys[pygame.K_s] == True:
-			Wolf.coordinates[1] = Wolf.coordinates[1] + Wolf.speed
-			Wolf.checkBorders()
+			WOLF.coordinates[1] = WOLF.coordinates[1] + WOLF.speed
+			WOLF.checkBorders()
 		if Keys[pygame.K_a] == True:
-			Wolf.coordinates[0] = Wolf.coordinates[0] - Wolf.speed
-			Wolf.checkBorders()
+			WOLF.coordinates[0] = WOLF.coordinates[0] - WOLF.speed
+			WOLF.checkBorders()
 		if Keys[pygame.K_d] == True:
-			Wolf.coordinates[0] = Wolf.coordinates[0] + Wolf.speed
-			Wolf.checkBorders()
+			WOLF.coordinates[0] = WOLF.coordinates[0] + WOLF.speed
+			WOLF.checkBorders()
 		clock.tick(25)
 
 if __name__ == "__main__":
