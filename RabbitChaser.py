@@ -30,6 +30,7 @@ HEIGHT = 420
 NOVISION = (66,66,66)
 BACKGROUND = (255, 255, 255)
 RABBITS = []
+SKULLS = []
 WOLF = None
 CALMAX = 1400
 STATS = dict()
@@ -47,7 +48,7 @@ class animal:
 	offspring = 1		# how many babies on average (range is [n-1, n, n+1])
 	calMov = 1			# how many calories are burnt per movement
 	calReserve = CALMAX	# Calorie reserve. Goes down calMov per Move. starvation if empty. Rabbit fills by XX
-	perception = 115	# how many pixels far they can see other animals. will chase/flee each other
+	perception = 120	# how many pixels far they can see other animals. will chase/flee each other
 	alive = True
 	coordinates = [0,0]
 	
@@ -131,14 +132,15 @@ class animal:
 				reTry = False
 					
 class wolf(animal):
+	
 	"""
 	animal 1
 	"""
 	def __init__(self, number, color, coordinates):
 		super().__init__(number, color, coordinates)
 		self.coordinates = coordinates
-		self.perception = 135
-		self.speed = 3
+		self.perception = animal.perception + 35
+		self.speed = 4
 		self.size = (20,15)
 		tempimage = pygame.image.load("res/wolf_running.png").convert()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)		
@@ -152,19 +154,22 @@ class wolf(animal):
 		elif chase and eat rabbits
 		else move randomly
 		"""
+		global SKULLS
 		global STATS
 		if self.calReserve < 1: #if calories under 1, starve
 			self.alive = False
 			print('wolf ' + str(self.number) + ' starved')
 			STATS['wolves'] = STATS['wolves'] - 1
 		else:				
-			xRange = range(self.coordinates[0] - 6, self.coordinates[0] + 27) # 6 + 1 + 20(size)
-			yRange = range(self.coordinates[1] - 5, self.coordinates[1] + 21) # 5 + 1 + 15(size)
+			xRange = range(self.coordinates[0] - 11, self.coordinates[0] + 27) # 6 + 1 + 20(size)
+			yRange = range(self.coordinates[1] - 10, self.coordinates[1] + 21) # 5 + 1 + 15(size)
 			for i, animal in enumerate(RABBITS):
 				if animal.coordinates[0] in xRange and animal.coordinates[1] in yRange:
 					if animal.coordinates[1] in range(self.coordinates[1] - 5, self.coordinates[1] + 6):
 						animal.alive = False
 						RABBITS.pop(i)
+						newSkull = skull(animal.coordinates)
+						SKULLS.append(newSkull)
 						STATS['rabbits'] = STATS['rabbits'] - 1
 						STATS['rabbits eaten'] = STATS['rabbits eaten'] + 1
 						self.calReserve = self.calReserve + 150
@@ -172,14 +177,14 @@ class wolf(animal):
 			self.calReserve = self.calReserve- self.calMov
 	
 	def checkBorders(self):
-		if self.coordinates[0] >= WIDTH:
-			self.coordinates[0] = WIDTH - random.randint(1,2)
-		elif self.coordinates[0] <= 0:
-			self.coordinates[0] = random.randint(1,2)
-		if self.coordinates[1] >= HEIGHT:
-			self.coordinates[1] = HEIGHT - random.randint(1,2)
-		elif self.coordinates[1] <= 0:
-			self.coordinates[1] = random.randint(1,2)
+		if self.coordinates[0] >= WIDTH + self.size[0]:
+			self.coordinates[0] = WIDTH - self.size[0] - random.randint(1,2)
+		elif self.coordinates[0] <= 0 + self.size[0]:
+			self.coordinates[0] = self.size[0] + random.randint(1,2)
+		if self.coordinates[1] >= HEIGHT + self.size[1]:
+			self.coordinates[1] = HEIGHT - self.size[1]- random.randint(1,2)
+		elif self.coordinates[1] <= 0 + self.size[1]:
+			self.coordinates[1] = self.size[1] + random.randint(1,2)
 			
 class rabbit(animal):
 	"""
@@ -209,16 +214,18 @@ class rabbit(animal):
 		if WOLF.coordinates[0] in range(minX, maxX) and WOLF.coordinates[1] in range(minY, maxY):
 			# run you fool!
 			fleeing = True
+			self.speed = 2
 			direction = self.avoid(WOLF.coordinates)	
 			if direction == 'Right':
 				self.image = IMAGES['rabbit_fleeing_right']
 			else:
 				self.image = IMAGES['rabbit_fleeing_left']
 		if fleeing == False:
+			self.speed = 1
 			if not self.image == IMAGES['rabbit_chill']	:
 				self.image = IMAGES['rabbit_chill']	
 			if self.repTime > self.repRate and len(RABBITS)< 150:	# rabbit: mating mode
-				self.speed = 2
+				
 				minX = self.coordinates[0] - self.perception - self.size [0] - 20
 				maxX = self.coordinates[0] + self.perception + self.size [0] + 21
 				minY = self.coordinates[1] - self.perception - self.size [1] - 20
@@ -239,8 +246,6 @@ class rabbit(animal):
 									self.repTime = 0
 									animal[1].repTime = 0
 									Caught = 0
-									self.speed = 1
-									animal[1].speed = 1
 								break
 				if found == False: #  no animal found, move randomly
 					self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-3,4), oldCoordinates[1]+self.speed*random.randrange(-3,4) ]
@@ -249,10 +254,21 @@ class rabbit(animal):
 				self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-3,4), oldCoordinates[1]+self.speed*random.randrange(-3,4) ]
 				self.checkCoor()
 
+class skull:
+	"""
+	class for skull objects
+	"""
+	def __init__(self, coordinates):
+		self.size = (10,10)
+		tempimage = pygame.image.load("res/skull.png").convert()
+		self.image = pygame.transform.smoothscale(tempimage, self.size)	
+		self.coordinates = coordinates
+		self.counter = 0
 
 def main():
 	global screen
-	global ANIMAL
+	global RABBITS
+	global SKULLS
 	global STATS
 	global WOLF
 	global IMAGES
@@ -267,11 +283,11 @@ def main():
 	IMAGES['rabbit_chill'] = image_chill
 	tempimage = pygame.image.load("res/rabbit_running.png").convert()	
 	image_fleeing = pygame.transform.smoothscale(tempimage, rabbit.size)	
-	IMAGES['rabbit_fleeing_left'] = image_fleeing
-	IMAGES['rabbit_fleeing_right'] = image_fleeing.flip()
+	IMAGES['rabbit_fleeing_right'] = image_fleeing
+	IMAGES['rabbit_fleeing_left'] = pygame.transform.flip(image_fleeing, flip_x = 1, flip_y = 0)
 	randCoordinates = [random.randrange(1,WIDTH), random.randrange(1, HEIGHT)]
 	WOLF = wolf(1, (0,0,0), randCoordinates)	#number, Color (black)
-	for i in range (1,25):
+	for i in range (1,15):
 		randCoordinates = [random.randrange(1,WIDTH), random.randrange(1, HEIGHT)]
 		Rabbit = rabbit(i, (255,0,0), randCoordinates)	#number, Color (red)
 		RABBITS.append (Rabbit)
@@ -292,13 +308,23 @@ def main():
 			elif event.type == RABBITEVENT:
 				for i, animal in enumerate(RABBITS):
 					animal.repTime = animal.repTime + random.randint(1,5) 
+				popcounter = 0
+				for i, skull in enumerate(SKULLS):
+					skull.counter = skull.counter + 1
+					if skull.counter == 4:
+						SKULLS.pop(i-popcounter)
+						popcounter = popcounter + 1 
+		for i, skull in enumerate(SKULLS):
+			#if not screen.get_at(skull.coordinates) == NOVISION:
+				screen.blit(skull.image, skull.coordinates)	# moves the pixel to new coordinates(coordinates moved in class method)
 		for i, animal in enumerate(RABBITS):
 			if animal.alive:
 				if not screen.get_at(animal.coordinates) == NOVISION:
 					screen.blit(animal.image, animal.coordinates)	# moves the pixel to new coordinates(coordinates moved in class method)
 				animal.update()
 				if not animal.alive:
-					del RABBITS[i]
+					print('jelp')
+				
 		screen.blit(WOLF.image, WOLF.coordinates)
 		WOLF.update()
 		pygame.display.flip()
