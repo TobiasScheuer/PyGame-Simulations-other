@@ -1,6 +1,8 @@
 # PyGame-Simulations-other
 
-- ToDo: Expand Readme :)
+ToDo: 
+- Expand Readme :)
+- Refactor entities to use pygames Sprite mechanics
 
 WolfRabbitPlant.py
 
@@ -9,6 +11,9 @@ Humans.py
 RabbitChaser.py
 
 FactorySim.py
+
+
+
 
 
 
