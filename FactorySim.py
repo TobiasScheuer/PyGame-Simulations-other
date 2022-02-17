@@ -1,5 +1,6 @@
 import pygame
 import pygame.gfxdraw
+import random
 
 """
 Goal of this Simulation:
@@ -26,7 +27,7 @@ empty box
 ++V0.1.1 define interfaces and orientation check
 ++V0.2 add empty box
 ++V0.3 add animations to machines, movement to products
-V0.4 expand setup -> more machines, more conveyors, more boxes, more products, actual production
++V0.4 expand setup -> more machines, more conveyors, more boxes, more products, actual production
 V0.5a switch to player based layout
 V1.2 decorate HUD
 
@@ -40,6 +41,14 @@ LOGISTICS = list()
 PRODUCTS = list()
 IDS = dict()
 
+def generate_ID():
+	ID = str(random.randint(1,9999))
+	while ID in IDS.keys:
+		ID = str(random.randint(1,9999))
+	while len(ID) < 4:
+		ID = "0" + ID
+	return ID
+
 class PlacementError(Exception):
 	def __init__(self, machinetype):
 		machine = str(machinetype)
@@ -47,7 +56,7 @@ class PlacementError(Exception):
 		machine = machine.split('\'')[0]
 		print("Can't place " + machine + " here, there is something in the way!")
 
-class Machine:
+class Resources:
 	"""
 	doc
 	"""
@@ -55,9 +64,35 @@ class Machine:
 		self.coordinates = coordinates
 		self.ID = ID
 		self.input_rect = list()		# a list of 25x3 rect  
-		self.output_rect = list()		# a list of 25x3 rect 
-	
-	def update(self):
+		self.output_rect = list()		# a list of 25x3 rect  
+
+	def get_interfaces(self):
+		"""
+		goes through all currently existing machines and logistic elements,
+		if one of their output interfaces overlap with own rect -> interface found -> add to own input interfaces
+		"""
+		for i,machine in enumerate(MACHINES):
+			outputlist_indexes = self.rect.collidelistall(machine.output_rect)
+			if len(outputlist_indexes) > 0:
+				for j in range(0, len(outputlist_indexes)):
+					if machine.output_rect[outputlist_indexes[j]] not in self.input_rect:
+						self.input_rect.append(machine.output_rect[outputlist_indexes[j]])
+		for i,logistic in enumerate(LOGISTICS):
+			if logistic.coordinates == self.coordinates:
+				pass
+			else:
+				outputlist_indexes = self.rect.collidelistall(logistic.output_rect)
+				if len(outputlist_indexes) > 0:
+					for j in range(0, len(outputlist_indexes)):
+						if logistic.output_rect[outputlist_indexes[j]] not in self.input_rect:
+							self.input_rect.append(logistic.output_rect[outputlist_indexes[j]])
+
+class Machine(Resources):
+	"""
+	doc
+	"""
+	def __init__(self, coordinates, ID):
+		super().__init__(coordinates, ID)
 		pass
 
 class BoxAdder(Machine):
@@ -83,20 +118,32 @@ class BoxAdder(Machine):
 			self.output_rect.append(output_down)
 
 	def update(self):
-		pass
+		ID = generate_ID
+		newBox = Box(self.output_rect[0], ID)
+		PRODUCTS.append(newBox)
+		IDS[ID] = type(newBox)
 
-
-class Logistics:
+class StorageUnit(Machine):
 	"""
 	doc
 	"""
 	def __init__(self, coordinates, ID):
-		self.coordinates = coordinates
-		self.ID = ID
-		self.input_rect = list()	# max 3 inputs, 25x3 rects
-		self.output_rect = list()	# max 3 outputs, 25x3 rects
+		super().__init__(coordinates, ID)
+		self.size = (25,25)
+		self.rect = pygame.Rect(coordinates, self.size)
+		tempimage = pygame.image.load("res/factory/storage.png").convert()
+		self.image = pygame.transform.smoothscale(tempimage, self.size)
+		self.get_interfaces()
 	
 	def update(self):
+		pass
+
+class Logistics(Resources):
+	"""
+	doc
+	"""
+	def __init__(self, coordinates, ID):
+		super().__init__(coordinates, ID)
 		pass
 
 class Conveyor(Logistics):
@@ -111,27 +158,6 @@ class Conveyor(Logistics):
 	def update(self):
 		pass	
 
-	def get_interfaces(self):
-		"""
-		goes through all currently existing machines and logistic elements,
-		if one of their output interfaces overlap with own rect -> interface found -> add to own input interfaces
-		"""
-		for i,machine in enumerate(MACHINES):
-			outputlist_indexes = self.rect.collidelistall(machine.output_rect)
-			if len(outputlist_indexes) > 0:
-				for j in range(0, len(outputlist_indexes)):
-					if machine.output_rect[outputlist_indexes[j]] not in self.input_rect:
-						self.input_rect.append(machine.output_rect[outputlist_indexes[j]])
-		for i,logistic in enumerate(LOGISTICS):
-			if logistic.coordinates == self.coordinates:
-				pass
-			else:
-				outputlist_indexes = self.rect.collidelistall(logistic.output_rect)
-				if len(outputlist_indexes) > 0:
-					for j in range(0, len(outputlist_indexes)):
-						if logistic.output_rect[outputlist_indexes[j]] not in self.input_rect:
-							self.input_rect.append(logistic.output_rect[outputlist_indexes[j]])
-
 	def check_orientation(self):
 		if self.direction == None:
 			if len(self.input_rect) == 0:
@@ -143,6 +169,9 @@ class Conveyor(Logistics):
 				for i,logistic in enumerate(LOGISTICS):
 					if logistic.coordinates in possible_neighbours:
 						hits.append(logistic.coordinates)
+				for i, machine in enumerate(MACHINES):
+					if machine.coordinates in possible_neighbours:
+						hits.append(machine.coordinates)
 				if len(hits) > 2:
 					raise PlacementError
 				elif len(hits) <= 0:
@@ -263,38 +292,36 @@ class RobotArm(Logistics):
 	def update(self):
 		pass
 
-class StorageUnit(Logistics):
-	"""
-	doc
-	"""
-	def __init__(self):
-		pass
-	
-	def update(self):
-		pass
-
 class Product:
 	"""
 	doc
 	"""
 	def __init__(self, coordinates, ID):
 		self.ID = ID
+		self.busy = False
 	
 	def update(self):
-		transporter_index = self.rect.collidelist(LOGISTICS)
-		if transporter_index >= 0:
-			transporter = LOGISTICS[transporter_index]
-			if transporter.direction == "up":
-				self.rect = self.rect.move(0,-1)
-			elif transporter.direction == "down":
-				self.rect = self.rect.move(0,1)
-			elif transporter.direction == "left":
-				self.rect = self.rect.move(-1,0)
-			elif transporter.direction == "right":
-				self.rect = self.rect.move(1,0)
-			else:
-				print(transporter)
-				print("error")	# TODO: add actual Error
+		if self.busy == False:
+			transporter_index = self.rect.collidelist(LOGISTICS)
+			if transporter_index >= 0:
+				transporter = LOGISTICS[transporter_index]
+				if transporter.direction == "up":
+					self.rect = self.rect.move(0,-1)
+				elif transporter.direction == "down":
+					self.rect = self.rect.move(0,1)
+				elif transporter.direction == "left":
+					self.rect = self.rect.move(-1,0)
+				elif transporter.direction == "right":
+					self.rect = self.rect.move(1,0)
+				else:
+					print(transporter)
+					print("error")	# TODO: add actual Error
+			machine_index = self.rect.collidelist(MACHINES)
+			if machine_index >= 0:
+				machine = MACHINES[machine_index]
+				if isinstance(machine, StorageUnit):
+					self.rect = ((machine.coordinates[0]+3, machine.coordinates[1]+3), self.size)
+					self.busy = True
 
 class Box(Product):
 	"""
@@ -331,46 +358,50 @@ def main():
 	box_adder1 = BoxAdder((50,50), "horizontal", "0000")
 	MACHINES.append(box_adder1)
 	IDS["0000"] = type(box_adder1)
+	storage1 = StorageUnit((75,150), "1000")
+	MACHINES.append(storage1)
+	IDS["1000"] = type(storage1)
 
-	roller1 = RollerConveyor((75,50), "0001")
+	roller1 = RollerConveyor((75,50), "0010")
 	LOGISTICS.append(roller1)
-	IDS["0001"] = type(roller1)
-	roller2 = RollerConveyor((100,50), "0002")
+	IDS["0010"] = type(roller1)
+	roller2 = RollerConveyor((100,50), "0020")
 	LOGISTICS.append(roller2)
-	IDS["0002"] = type(roller2)
-	roller3 = RollerConveyor((100,75), "0003")
+	IDS["0020"] = type(roller2)
+	roller3 = RollerConveyor((100,75), "0030")
 	LOGISTICS.append(roller3)
-	IDS["0003"] = type(roller3)
-	box1 = Box((75,50), "0004")
-	for i,entity in enumerate(LOGISTICS):
-		print(entity.input_rect)
-		print(entity.output_rect)
-		entity.get_interfaces()
-		entity.check_orientation()
-		print(entity.input_rect)
-		print(entity.output_rect)
-	for i,entity in enumerate(LOGISTICS):
-		print(entity.input_rect)
-		print(entity.output_rect)
-		entity.get_interfaces()
-		entity.check_orientation()
-		print(entity.input_rect)
-		print(entity.output_rect)
-	for i,entity in enumerate(LOGISTICS):
-		print(entity.direction)
+	IDS["0030"] = type(roller3)
+	roller4 = RollerConveyor((100,100), "0040")
+	LOGISTICS.append(roller4)
+	IDS["0040"] = type(roller4)
+	roller5 = RollerConveyor((75,100), "0050")
+	LOGISTICS.append(roller5)
+	IDS["0050"] = type(roller5)
+	roller6 = RollerConveyor((75,125), "0060")
+	LOGISTICS.append(roller6)
+	IDS["0060"] = type(roller6)
+
+	box1 = Box((75,50), "0100")
 	PRODUCTS.append(box1)
-	IDS["0004"] = type(box1)
-	XYTIMER, t = pygame.USEREVENT+1, 4000
-	pygame.time.set_timer(XYTIMER, t)
+	IDS["0100"] = type(box1)
+	BOXTIMER, t = pygame.USEREVENT+1, 4000
+	pygame.time.set_timer(BOXTIMER, t)
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
+	for j in range(0,len(LOGISTICS)+1):
+		for i,entity in enumerate(LOGISTICS):
+			entity.get_interfaces()
+			entity.check_orientation()
+	for i, machine in enumerate(MACHINES):
+			machine.get_interfaces()
 	while 1:
 		screen.fill(BACKGROUND)
 		create_grid(screen)
 		for event in pygame.event.get():
-			if event.type == XYTIMER:
-				pass
+			if event.type == BOXTIMER:
+				for i,machine in enumerate(MACHINES):
+					machine.update()
 		for i,machine in enumerate(MACHINES):
 				screen.blit(machine.image, machine.rect)
 		if counter == 0:
