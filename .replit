@@ -1,7 +1,7 @@
 # The command that is executed when the run button is clicked.
-run = "python RabbitChaser.py"
+run = "python FactorySim.py"
 
 language="python3"
 
 # The default file opened in the editor.
-entrypoint = "Humans.py"
+entrypoint = "FactorySim.py"

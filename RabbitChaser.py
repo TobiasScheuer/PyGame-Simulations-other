@@ -22,7 +22,7 @@ calorie reserve      y        y      int       n
 ++V0.3 add controls for wolf
 ++V0.4 controls testing and tweaking
 ++V0.5 edit rabbits to flee from wolf
-V0.6 try pictures for the animals
+++V0.6 try pictures for the animals
 V? ?
 """
 WIDTH = 1050
