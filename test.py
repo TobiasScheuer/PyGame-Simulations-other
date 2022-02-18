@@ -1,10 +1,11 @@
 import random
 
 def main():
-	teststring = "1234"
-	print(len(teststring))
-	newstring = "0"+teststring
-	print(newstring)
+	k = 3
+	j = 2
+	k = j = 5
+	print(k)
+	print(j)
 
 
 	

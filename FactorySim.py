@@ -10,7 +10,7 @@ Either pre-setup or player-based input for layout
 Grid-based system (rectangles are 25x25 pixels)   CHANGE?
 
 Available machines: (add them step by step)
-box-adder
+product-adder
 storage unit
 
 Available intralogistics elements:
@@ -21,6 +21,7 @@ drones?
 
 Available products:
 empty box
+bottles
 
 ++V0.0 add grid and visualize
 ++V0.1 add first pre-setup machine, first belt
@@ -43,11 +44,13 @@ IDS = dict()
 
 
 class PlacementError(Exception):
-	def __init__(self, machinetype):
+	def __init__(self, machinetype, coordinates, entity):
 		machine = str(machinetype)
 		machine = machine.split('.')[1]
 		machine = machine.split('\'')[0]
-		print("Can't place " + machine + " here, there is something in the way!")
+		if isinstance(entity, str) == False:
+			entity = str(entity)
+		print("Can't place " + machine + " at " + str(coordinates) + ", because of " + entity)
 
 class Resources:
 	"""
@@ -55,12 +58,12 @@ class Resources:
 	"""
 	def check_coordinates(self, coordinates):
 		if coordinates[0] < 0 or coordinates[0] > WIDTH:
-			raise PlacementError
+			raise PlacementError(type(self), coordinates, "horizontal coordinate bounds")
 		elif coordinates[1] < 0 or coordinates[1] > HEIGHT:
-			raise PlacementError
+			raise PlacementError(type(self), coordinates, "vertical coordinate bounds")
 		for i, entity in enumerate(LOGISTICS+MACHINES):
 			if coordinates == entity.coordinates:
-				raise PlacementError
+				raise PlacementError(type(self), coordinates, entity)
 
 	def generate_ID(self):
 		ID = str(random.randint(1,9999))
@@ -213,7 +216,7 @@ class Conveyor(Logistics):
 					if machine.coordinates in possible_neighbours:
 						hits.append(machine.coordinates)
 				if len(hits) > 2 and isinstance(self, RollerConveyor): #1D Roller Conveyor supposed to only have 2 neighbors
-					raise PlacementError
+					raise PlacementError(type(self), self.coordinates, "too many neighbours")
 				elif len(hits) <= 0:
 					pass
 				else:
@@ -361,11 +364,33 @@ class RobotArm(Logistics):
 	"""
 	doc
 	"""
-	def __init__(self):
-		pass
+	def __init__(self,coordinates):
+		super().__init__(coordinates)
+		self.size = (25,25)
+		self.rect = pygame.Rect(coordinates, self.size)
+		self.images = dict()
+		for i in range(0,8):
+			path = "res/factory/robotArm/robotArm" + str(i+1) + ".png"
+			tempimage = pygame.image.load(path).convert()
+			self.images[i+1] = pygame.transform.smoothscale(tempimage, self.size)		
+		self.image = self.images[1]
+		self.direction = "right"
+		poss1 = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+		poss2 = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+		poss3 = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+		poss4 = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)	
+		self.input_rects = self.output_rects = [poss1, poss2, poss3, poss4]
 	
 	def update(self):
-		pass
+		if self.direction == "up":
+			self.image = self.images[1]
+		elif self.direction == "down":
+			self.image = self.images[5]
+		elif self.direction == "left":
+			self.image = self.images[7]
+		elif self.direction == "right":
+			self.image = self.images[3]
+
 
 class Product:
 	"""
@@ -470,7 +495,6 @@ def main():
 	global LOGISTICS
 	global PRODUCTS
 	global IDS
-	global check_coordinates
 	clock = pygame.time.Clock()
 	pygame.init()
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -488,13 +512,18 @@ def main():
 	MACHINES.append(storage2)
 
 	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
-	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,150), (325,175)]
+	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,175)]
 	merged_lists = roller_coordinates+roller_coordinates2
 	for i in range(0,len(merged_lists)):
 		new_roller = RollerConveyor(merged_lists[i])
 		LOGISTICS.append(new_roller)
 	TIntersection1 = TIntersection((100,50), None)
 	LOGISTICS.append(TIntersection1)
+	robotArm1 = RobotArm((300,150))
+	LOGISTICS.append(robotArm1)
+	TIntersection2 = TIntersection((325,150), "down")
+	LOGISTICS.append(TIntersection2)
+
 	box1 = Box((75,50))
 	PRODUCTS.append(box1)
 	bottles1 = Bottles((350,75))
@@ -506,8 +535,9 @@ def main():
 	counter = 0
 	for j in range(0,len(LOGISTICS)+3):
 		for i,entity in enumerate(LOGISTICS):
-			entity.get_interfaces()
-			entity.check_orientation()
+			if isinstance(entity, Conveyor):
+				entity.get_interfaces()
+				entity.check_orientation()
 	for i, machine in enumerate(MACHINES):
 			machine.get_interfaces()
 	while 1:
@@ -526,7 +556,11 @@ def main():
 			counter = 1
 		else:
 			for i,entity in enumerate(LOGISTICS):
-				screen.blit(entity.image1, entity.rect)	
+				if isinstance(entity, Conveyor):
+					screen.blit(entity.image1, entity.rect)	
+				else:
+					screen.blit(entity.image, entity.rect)
+					entity.update()
 			counter = 0		
 		for i,product in enumerate(PRODUCTS):
 				screen.blit(product.image, product.rect)
