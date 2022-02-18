@@ -429,8 +429,23 @@ class Box(Product):
 		super().__init__(coordinates)
 		self.size = (19,17)
 		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
-		tempimage = pygame.image.load("res/factory/box.png").convert()
+		tempimage = pygame.image.load("res/factory/box.png").convert_alpha()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)	
+		self.content = None
+
+class Bottles(Product):
+	"""
+	doc
+	"""
+	def __init__(self, coordinates):
+		super().__init__(coordinates)
+		self.size = (19,17)
+		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
+		tempimage = pygame.image.load("res/factory/bottles.png").convert_alpha()
+		self.image = pygame.transform.smoothscale(tempimage, self.size)
+		tempimage = pygame.image.load("res/factory/boxedBottles.png").convert_alpha()
+		self.image_boxed = pygame.transform.smoothscale(tempimage, self.size)
+		
 
 
 def create_grid(screen):
@@ -477,6 +492,8 @@ def main():
 	LOGISTICS.append(TIntersection1)
 	box1 = Box((75,50))
 	PRODUCTS.append(box1)
+	bottles1 = Bottles((350,75))
+	PRODUCTS.append(bottles1)
 	BOXTIMER, t = pygame.USEREVENT+1, 4000
 	pygame.time.set_timer(BOXTIMER, t)
 	caption = 'FactorySim'
