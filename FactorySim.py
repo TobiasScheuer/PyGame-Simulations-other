@@ -49,31 +49,34 @@ class PlacementError(Exception):
 		machine = machine.split('\'')[0]
 		print("Can't place " + machine + " here, there is something in the way!")
 
-def generate_ID():
-	ID = str(random.randint(1,9999))
-	while ID in IDS.keys:
-		ID = str(random.randint(1,9999))
-	while len(ID) < 4:
-		ID = "0" + ID
-	return ID
-
-def check_coordinates(coordinates):
-	if coordinates[0] < 0 or coordinates[0] > WIDTH:
-		raise PlacementError
-	elif coordinates[1] < 0 or coordinates[1] > HEIGHT:
-		raise PlacementError
-	for i, entity in enumerate(LOGISTICS+MACHINES):
-		if coordinates == entity.coordinates:
-			raise PlacementError
-
 class Resources:
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, ID):
-		check_coordinates(coordinates)
-		self.coordinates = coordinates
+	def check_coordinates(self, coordinates):
+		if coordinates[0] < 0 or coordinates[0] > WIDTH:
+			raise PlacementError
+		elif coordinates[1] < 0 or coordinates[1] > HEIGHT:
+			raise PlacementError
+		for i, entity in enumerate(LOGISTICS+MACHINES):
+			if coordinates == entity.coordinates:
+				raise PlacementError
+
+	def generate_ID(self):
+		ID = str(random.randint(1,9999))
+		while len(ID) < 4:
+			ID = "0" + ID
+		while ID in IDS.keys():
+			ID = str(random.randint(1,9999))
+			while len(ID) < 4:
+				ID = "0" + ID
 		self.ID = ID
+
+	def __init__(self, coordinates):
+		self.check_coordinates(coordinates)
+		self.coordinates = coordinates
+		self.generate_ID()
+		IDS[self.ID] = type(self)
 		self.input_rect = list()		# a list of 25x3 rect  
 		self.output_rect = list()		# a list of 25x3 rect  
 
@@ -98,20 +101,23 @@ class Resources:
 						if logistic.output_rect[outputlist_indexes[j]] not in self.input_rect:
 							self.input_rect.append(logistic.output_rect[outputlist_indexes[j]])
 
+	
+
+
 class Machine(Resources):
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, ID):
-		super().__init__(coordinates, ID)
+	def __init__(self, coordinates):
+		super().__init__(coordinates)
 		pass
 
 class BoxAdder(Machine):
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, orientation, ID):
-		super().__init__(coordinates, ID)
+	def __init__(self, coordinates, orientation):
+		super().__init__(coordinates)
 		self.size = (25,25)
 		self.rect = pygame.Rect(coordinates, self.size)
 		tempimage = pygame.image.load("res/factory/boxAdder.png").convert()
@@ -124,7 +130,7 @@ class BoxAdder(Machine):
 			self.output_rect.append(output_left)
 			
 		elif orientation == "vertical":
-			output_up = pygame.Rect((coordinates[0], coordinates[1]-1), (25,3))
+			output_up = pygame.Rect((coordinates[0], coordinates[1]-3), (25,3))
 			self.output_rect.append(output_up)
 			output_down = pygame.Rect((coordinates[0], coordinates[1]+24), (25,3))
 			self.output_rect.append(output_down)
@@ -140,14 +146,13 @@ class BoxAdder(Machine):
 					coordinates = (self.output_rect[1][0]-19, self.output_rect[1][1] )
 			else:			#vertical
 				if self.output_rect[0] in logistic.input_rect:	# top output
-					coordinates = (self.output_rect[0][0], self.output_rect[0][1] )			
+					coordinates = (self.output_rect[0][0], self.output_rect[0][1]-19 )			
 				elif self.output_rect[1] in logistic.input_rect:
-					coordinates = (self.output_rect[1][0], self.output_rect[1][1]-19 )
+					coordinates = (self.output_rect[1][0], self.output_rect[1][1]-1 )
 			if coordinates != (0,0):
-				ID = generate_ID
-				newBox = Box(coordinates, ID)
+				self.generate_ID()
+				newBox = Box(coordinates)
 				PRODUCTS.append(newBox)
-				IDS[ID] = type(newBox)
 				counter += 1
 			if counter == 2:
 				break
@@ -157,8 +162,8 @@ class StorageUnit(Machine):
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, ID):
-		super().__init__(coordinates, ID)
+	def __init__(self, coordinates):
+		super().__init__(coordinates)
 		self.size = (25,25)
 		self.rect = pygame.Rect(coordinates, self.size)
 		tempimage = pygame.image.load("res/factory/storage.png").convert()
@@ -172,16 +177,16 @@ class Logistics(Resources):
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, ID):
-		super().__init__(coordinates, ID)
+	def __init__(self, coordinates):
+		super().__init__(coordinates)
 		pass
 
 class Conveyor(Logistics):
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, ID):
-		super().__init__(coordinates, ID)
+	def __init__(self, coordinates):
+		super().__init__(coordinates)
 		self.direction = None	# stores direction of transportation, "up", "down", "left", "right"
 		#self.check_orientation()
 	
@@ -285,7 +290,7 @@ class BeltConveyor(Conveyor):
 	"""
 	doc
 	"""
-	def __init__(self,coordinates, ID):
+	def __init__(self,coordinates):
 		pass
 	
 	def update(self):
@@ -295,8 +300,8 @@ class RollerConveyor(Conveyor):
 	"""
 	doc
 	"""
-	def __init__(self,coordinates, ID):
-		super().__init__(coordinates, ID)
+	def __init__(self,coordinates):
+		super().__init__(coordinates)
 		self.size = (25,25)
 		self.rect = pygame.Rect(coordinates, self.size)
 		tempimage = pygame.image.load("res/factory/rollerConveyor.png").convert()
@@ -314,10 +319,8 @@ class TIntersection(RollerConveyor):
 	"""
 	2/3 inputs, 1 output, if 2 inputs direction needs to be specified (otherwise type None for automatic orientation)
 	"""
-	def __init__(self,coordinates, ID, direction):
-		super().__init__(coordinates, ID)
-		self.size = (25,25)
-		self.rect = pygame.Rect(coordinates, self.size)
+	def __init__(self,coordinates, direction):
+		super().__init__(coordinates)
 		tempimage = pygame.image.load("res/factory/TIntersection.png").convert()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)	
 		tempimage1 = pygame.image.load("res/factory/TIntersection1.png").convert()
@@ -363,8 +366,19 @@ class Product:
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, ID):
+	def generate_ID(self):
+		ID = str(random.randint(1,9999))
+		while len(ID) < 4:
+			ID = "0" + ID
+		while ID in IDS.keys():
+			ID = str(random.randint(1,9999))
+			while len(ID) < 4:
+				ID = "0" + ID
 		self.ID = ID
+
+	def __init__(self, coordinates):
+		self.generate_ID()
+		IDS[self.ID] = type(self)
 		self.busy = False
 	
 	def update(self):
@@ -411,9 +425,9 @@ class Box(Product):
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, ID):
-		super().__init__(coordinates, ID)
-		self.size = (19,18)
+	def __init__(self, coordinates):
+		super().__init__(coordinates)
+		self.size = (19,17)
 		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
 		tempimage = pygame.image.load("res/factory/box.png").convert()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)	
@@ -436,36 +450,33 @@ def main():
 	global LOGISTICS
 	global PRODUCTS
 	global IDS
+	global check_coordinates
 	clock = pygame.time.Clock()
 	pygame.init()
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
-	box_adder1 = BoxAdder((50,50), "horizontal", "0000")
+	box_adder1 = BoxAdder((50,50), "horizontal")
 	MACHINES.append(box_adder1)
-	IDS["0000"] = type(box_adder1)
-	box_adder2 = BoxAdder((175,50), "horizontal", "0001")
+	box_adder2 = BoxAdder((175,50), "horizontal")
 	MACHINES.append(box_adder2)
-	IDS["0001"] = type(box_adder2)
-	box_adder3 = BoxAdder((100,0), "vertical", "0002")
+	box_adder3 = BoxAdder((100,0), "vertical")
 	MACHINES.append(box_adder3)
-	IDS["0002"] = type(box_adder3)
-	storage1 = StorageUnit((75,150), "1000")
+	box_adder4 = BoxAdder((350,100), "vertical")
+	MACHINES.append(box_adder4)
+	storage1 = StorageUnit((75,150))
 	MACHINES.append(storage1)
-	IDS["1000"] = type(storage1)
+	storage2 = StorageUnit((325,200))
+	MACHINES.append(storage2)
 
 	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
-	for i in range(0,len(roller_coordinates)):
-		ID = generate_ID
-		new_roller = RollerConveyor(roller_coordinates[i], ID)
+	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,150), (325,175)]
+	merged_lists = roller_coordinates+roller_coordinates2
+	for i in range(0,len(merged_lists)):
+		new_roller = RollerConveyor(merged_lists[i])
 		LOGISTICS.append(new_roller)
-		IDS[ID] = type(new_roller)
-	ID = generate_ID
-	TIntersection1 = TIntersection((100,50), ID, None)
+	TIntersection1 = TIntersection((100,50), None)
 	LOGISTICS.append(TIntersection1)
-	IDS[ID] = type(TIntersection1)
-	ID = generate_ID
-	box1 = Box((75,50), ID)
+	box1 = Box((75,50))
 	PRODUCTS.append(box1)
-	IDS[ID] = type(box1)
 	BOXTIMER, t = pygame.USEREVENT+1, 4000
 	pygame.time.set_timer(BOXTIMER, t)
 	caption = 'FactorySim'
@@ -484,6 +495,7 @@ def main():
 			if event.type == BOXTIMER:
 				for i,machine in enumerate(MACHINES):
 					machine.update()
+				#print(IDS.keys())
 		for i,machine in enumerate(MACHINES):
 				screen.blit(machine.image, machine.rect)
 		if counter == 0:
@@ -499,7 +511,9 @@ def main():
 				product.update()
 
 		pygame.display.flip()
-		clock.tick(25)
+		clock.tick(24)
+		#slow-mo:
+		#clock.tick(5)
 
 if __name__ == "__main__":
 	main()
