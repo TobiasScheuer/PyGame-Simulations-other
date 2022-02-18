@@ -41,13 +41,6 @@ LOGISTICS = list()
 PRODUCTS = list()
 IDS = dict()
 
-def generate_ID():
-	ID = str(random.randint(1,9999))
-	while ID in IDS.keys:
-		ID = str(random.randint(1,9999))
-	while len(ID) < 4:
-		ID = "0" + ID
-	return ID
 
 class PlacementError(Exception):
 	def __init__(self, machinetype):
@@ -56,11 +49,29 @@ class PlacementError(Exception):
 		machine = machine.split('\'')[0]
 		print("Can't place " + machine + " here, there is something in the way!")
 
+def generate_ID():
+	ID = str(random.randint(1,9999))
+	while ID in IDS.keys:
+		ID = str(random.randint(1,9999))
+	while len(ID) < 4:
+		ID = "0" + ID
+	return ID
+
+def check_coordinates(coordinates):
+	if coordinates[0] < 0 or coordinates[0] > WIDTH:
+		raise PlacementError
+	elif coordinates[1] < 0 or coordinates[1] > HEIGHT:
+		raise PlacementError
+	for i, entity in enumerate(LOGISTICS+MACHINES):
+		if coordinates == entity.coordinates:
+			raise PlacementError
+
 class Resources:
 	"""
 	doc
 	"""
 	def __init__(self, coordinates, ID):
+		check_coordinates(coordinates)
 		self.coordinates = coordinates
 		self.ID = ID
 		self.input_rect = list()		# a list of 25x3 rect  
@@ -121,16 +132,20 @@ class BoxAdder(Machine):
 	def update(self):
 		counter = 0
 		for i, logistic in enumerate(LOGISTICS):
-			if self.output_rect[0] in logistic.input_rect:
+			coordinates = (0,0)
+			if self.orientation == "horizontal":
+				if self.output_rect[0] in logistic.input_rect:	# right output
+					coordinates = (self.output_rect[0][0], self.output_rect[0][1] )			
+				elif self.output_rect[1] in logistic.input_rect:
+					coordinates = (self.output_rect[1][0]-19, self.output_rect[1][1] )
+			else:			#vertical
+				if self.output_rect[0] in logistic.input_rect:	# top output
+					coordinates = (self.output_rect[0][0], self.output_rect[0][1] )			
+				elif self.output_rect[1] in logistic.input_rect:
+					coordinates = (self.output_rect[1][0], self.output_rect[1][1]-19 )
+			if coordinates != (0,0):
 				ID = generate_ID
-				newBox = Box((self.output_rect[0][0],self.output_rect[0][1] ), ID)
-				PRODUCTS.append(newBox)
-				IDS[ID] = type(newBox)
-				counter += 1
-			elif self.output_rect[1] in logistic.input_rect:
-				ID = generate_ID
-
-				newBox = Box((self.output_rect[1][0]-19,self.output_rect[1][1] ), ID)
+				newBox = Box(coordinates, ID)
 				PRODUCTS.append(newBox)
 				IDS[ID] = type(newBox)
 				counter += 1
@@ -237,9 +252,31 @@ class Conveyor(Logistics):
 			elif len(self.input_rect) == 2:
 				pass
 			elif len(self.input_rect) == 3:
-				print(self.input_rect)
 				if isinstance(self, TIntersection):
-					possible_interfaces = []
+					poss1 = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+					poss2 = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+					poss3 = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+					poss4 = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
+					possible_interfaces = [poss1, poss2, poss3, poss4]
+					for i in range(0,4):
+						if not possible_interfaces[i] in self.input_rect:
+							self.output_rect.append(possible_interfaces[i])
+							if i == 0:
+								self.direction = "left"
+								self.image = pygame.transform.rotate(self.image, 90)
+								self.image1 = pygame.transform.rotate(self.image1, 90)
+							elif i == 1:
+								self.direction = "right"
+								self.image = pygame.transform.rotate(self.image, 270)
+								self.image1 = pygame.transform.rotate(self.image1, 270)
+							elif i == 2:
+								self.direction = "up"
+								#image correct orientation from loading
+							else:
+								self.direction = "down"
+								self.image = pygame.transform.flip(self.image, False, True)
+								self.image1 = pygame.transform.flip(self.image1, False, True)
+							break
 			else:
 				print('error1')
 				# TODO: create actual error
@@ -275,7 +312,7 @@ class RollerConveyor(Conveyor):
 
 class TIntersection(RollerConveyor):
 	"""
-	2/3 inputs, 1 output, if 2 inputs direction needs to be specified (otherwise None for automatic orientation)
+	2/3 inputs, 1 output, if 2 inputs direction needs to be specified (otherwise type None for automatic orientation)
 	"""
 	def __init__(self,coordinates, ID, direction):
 		super().__init__(coordinates, ID)
@@ -301,7 +338,8 @@ class TIntersection(RollerConveyor):
 			output_interface = pygame.Rect((coordinates[0]+24, coordinates[1]), (3,25))
 			self.image = pygame.transform.rotate(self.image, 90)
 			self.image1 = pygame.transform.rotate(self.image1, 90)
-		self.output_rect.append(output_interface)
+		if direction != None:
+			self.output_rect.append(output_interface)
 		self.get_interfaces()
 		self.check_orientation()	# can only be called here since in class __init__ the images are not yet set
 		
@@ -404,44 +442,36 @@ def main():
 	box_adder1 = BoxAdder((50,50), "horizontal", "0000")
 	MACHINES.append(box_adder1)
 	IDS["0000"] = type(box_adder1)
-	box_adder2 = BoxAdder((150,50), "horizontal", "0001")
+	box_adder2 = BoxAdder((175,50), "horizontal", "0001")
 	MACHINES.append(box_adder2)
 	IDS["0001"] = type(box_adder2)
+	box_adder3 = BoxAdder((100,0), "vertical", "0002")
+	MACHINES.append(box_adder3)
+	IDS["0002"] = type(box_adder3)
 	storage1 = StorageUnit((75,150), "1000")
 	MACHINES.append(storage1)
 	IDS["1000"] = type(storage1)
 
-	roller1 = RollerConveyor((75,50), "0010")
-	LOGISTICS.append(roller1)
-	IDS["0010"] = type(roller1)
-	TIntersection1 = TIntersection((100,50), "0020", "down")
+	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
+	for i in range(0,len(roller_coordinates)):
+		ID = generate_ID
+		new_roller = RollerConveyor(roller_coordinates[i], ID)
+		LOGISTICS.append(new_roller)
+		IDS[ID] = type(new_roller)
+	ID = generate_ID
+	TIntersection1 = TIntersection((100,50), ID, None)
 	LOGISTICS.append(TIntersection1)
-	IDS["0020"] = type(TIntersection1)
-	roller3 = RollerConveyor((100,75), "0030")
-	LOGISTICS.append(roller3)
-	IDS["0030"] = type(roller3)
-	roller4 = RollerConveyor((100,100), "0040")
-	LOGISTICS.append(roller4)
-	IDS["0040"] = type(roller4)
-	roller5 = RollerConveyor((75,100), "0050")
-	LOGISTICS.append(roller5)
-	IDS["0050"] = type(roller5)
-	roller6 = RollerConveyor((75,125), "0060")
-	LOGISTICS.append(roller6)
-	IDS["0060"] = type(roller6)
-	roller7 = RollerConveyor((125,50), "0070")
-	LOGISTICS.append(roller7)
-	IDS["0070"] = type(roller7)
-
-	box1 = Box((75,50), "0100")
+	IDS[ID] = type(TIntersection1)
+	ID = generate_ID
+	box1 = Box((75,50), ID)
 	PRODUCTS.append(box1)
-	IDS["0100"] = type(box1)
+	IDS[ID] = type(box1)
 	BOXTIMER, t = pygame.USEREVENT+1, 4000
 	pygame.time.set_timer(BOXTIMER, t)
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
-	for j in range(0,len(LOGISTICS)+1):
+	for j in range(0,len(LOGISTICS)+3):
 		for i,entity in enumerate(LOGISTICS):
 			entity.get_interfaces()
 			entity.check_orientation()
