@@ -102,8 +102,6 @@ class Resources:
 							self.input_rect.append(logistic.output_rect[outputlist_indexes[j]])
 
 	
-
-
 class Machine(Resources):
 	"""
 	doc
@@ -112,15 +110,19 @@ class Machine(Resources):
 		super().__init__(coordinates)
 		pass
 
-class BoxAdder(Machine):
+class ProductAdder(Machine):
 	"""
 	doc
 	"""
-	def __init__(self, coordinates, orientation):
+	def __init__(self, coordinates, orientation, product):
 		super().__init__(coordinates)
 		self.size = (25,25)
 		self.rect = pygame.Rect(coordinates, self.size)
-		tempimage = pygame.image.load("res/factory/boxAdder.png").convert()
+		self.product = product
+		if product == "boxes":
+			tempimage = pygame.image.load("res/factory/boxAdder.png").convert()
+		elif product == "bottles":
+			tempimage = pygame.image.load("res/factory/bottleAdder.png").convert()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)	
 		self.orientation = orientation
 		if orientation == "horizontal":
@@ -151,8 +153,11 @@ class BoxAdder(Machine):
 					coordinates = (self.output_rect[1][0], self.output_rect[1][1]-1 )
 			if coordinates != (0,0):
 				self.generate_ID()
-				newBox = Box(coordinates)
-				PRODUCTS.append(newBox)
+				if self.product == "boxes":
+					newProduct = Box(coordinates)
+				elif self.product == "bottles":
+					newProduct = Bottles(coordinates)
+				PRODUCTS.append(newProduct)
 				counter += 1
 			if counter == 2:
 				break
@@ -469,14 +474,14 @@ def main():
 	clock = pygame.time.Clock()
 	pygame.init()
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
-	box_adder1 = BoxAdder((50,50), "horizontal")
+	box_adder1 = ProductAdder((50,50), "horizontal", "boxes")
 	MACHINES.append(box_adder1)
-	box_adder2 = BoxAdder((175,50), "horizontal")
+	box_adder2 = ProductAdder((175,50), "horizontal", "boxes")
 	MACHINES.append(box_adder2)
-	box_adder3 = BoxAdder((100,0), "vertical")
-	MACHINES.append(box_adder3)
-	box_adder4 = BoxAdder((350,100), "vertical")
-	MACHINES.append(box_adder4)
+	bottle_adder1 = ProductAdder((100,0), "vertical", "bottles")
+	MACHINES.append(bottle_adder1)
+	bottle_adder2 = ProductAdder((350,100), "vertical", "bottles")
+	MACHINES.append(bottle_adder2)
 	storage1 = StorageUnit((75,150))
 	MACHINES.append(storage1)
 	storage2 = StorageUnit((325,200))
