@@ -1,0 +1,27 @@
+digraph "classes" {
+rankdir=BT
+charset="utf-8"
+"FactorySim.BeltConveyor" [color="black", fontcolor="black", label="{BeltConveyor|\l|update()\l}", shape="record", style="solid"];
+"FactorySim.Box" [color="black", fontcolor="black", label="{Box|image\lrect\lsize : tuple\l|}", shape="record", style="solid"];
+"FactorySim.BoxAdder" [color="black", fontcolor="black", label="{BoxAdder|image\lorientation\lrect\lsize : tuple\l|update()\l}", shape="record", style="solid"];
+"FactorySim.Conveyor" [color="black", fontcolor="black", label="{Conveyor|direction : str, NoneType\limage\limage1\l|check_orientation()\lupdate()\l}", shape="record", style="solid"];
+"FactorySim.Logistics" [color="black", fontcolor="black", label="{Logistics|\l|}", shape="record", style="solid"];
+"FactorySim.Machine" [color="black", fontcolor="black", label="{Machine|\l|}", shape="record", style="solid"];
+"FactorySim.PlacementError" [color="black", fontcolor="red", label="{PlacementError|\l|}", shape="record", style="solid"];
+"FactorySim.Product" [color="black", fontcolor="black", label="{Product|ID\lbusy : bool\lrect : tuple\l|update()\l}", shape="record", style="solid"];
+"FactorySim.Resources" [color="black", fontcolor="black", label="{Resources|ID\lcoordinates\linput_rect : list\loutput_rect : list\l|get_interfaces()\l}", shape="record", style="solid"];
+"FactorySim.RobotArm" [color="black", fontcolor="black", label="{RobotArm|\l|update()\l}", shape="record", style="solid"];
+"FactorySim.RollerConveyor" [color="black", fontcolor="black", label="{RollerConveyor|image\limage1\lrect\lsize : tuple\l|update()\l}", shape="record", style="solid"];
+"FactorySim.StorageUnit" [color="black", fontcolor="black", label="{StorageUnit|image\lrect\lsize : tuple\l|update()\l}", shape="record", style="solid"];
+"FactorySim.TIntersection" [color="black", fontcolor="black", label="{TIntersection|direction\l|update()\l}", shape="record", style="solid"];
+"FactorySim.BeltConveyor" -> "FactorySim.Conveyor" [arrowhead="empty", arrowtail="none"];
+"FactorySim.Box" -> "FactorySim.Product" [arrowhead="empty", arrowtail="none"];
+"FactorySim.BoxAdder" -> "FactorySim.Machine" [arrowhead="empty", arrowtail="none"];
+"FactorySim.Conveyor" -> "FactorySim.Logistics" [arrowhead="empty", arrowtail="none"];
+"FactorySim.Logistics" -> "FactorySim.Resources" [arrowhead="empty", arrowtail="none"];
+"FactorySim.Machine" -> "FactorySim.Resources" [arrowhead="empty", arrowtail="none"];
+"FactorySim.RobotArm" -> "FactorySim.Logistics" [arrowhead="empty", arrowtail="none"];
+"FactorySim.RollerConveyor" -> "FactorySim.Conveyor" [arrowhead="empty", arrowtail="none"];
+"FactorySim.StorageUnit" -> "FactorySim.Machine" [arrowhead="empty", arrowtail="none"];
+"FactorySim.TIntersection" -> "FactorySim.RollerConveyor" [arrowhead="empty", arrowtail="none"];
+}
