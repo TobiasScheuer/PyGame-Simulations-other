@@ -421,34 +421,59 @@ class Product:
 			ycenter = self.rect[1] + int(self.size[1]*0.5)
 			xline = ((self.rect[0], ycenter ) , ( self.rect[0] + self.size[0],  ycenter))
 			yline = ((xcenter, self.rect[1] ) , ( xcenter, self.rect[1]+self.size[1]))
+			collision = False
 			for i,logistic in enumerate(LOGISTICS):
 				if logistic.direction == "up" or logistic.direction == "down":
 					yclip = logistic.rect.clipline(yline) #yclip containts line part coordinates which is in logistic rect
 					if yclip:	# evaluates if yclip has contents and there is inside the 
 						if logistic.direction == "up":
 							if upc == 0:
-								self.rect = self.rect.move(0,-1)
+								collision_box = pygame.Rect(self.rect[0], self.rect[1]-3, self.size[0], self.size[1]+3)
+								for i, product in enumerate(PRODUCTS):
+									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
+										collision = True
+										break
+								if collision == False:
+									self.rect = self.rect.move(0,-1)
 								upc += 1
 						elif logistic.direction == "down":
 							if downc == 0:
-								self.rect = self.rect.move(0,1)
+								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0], self.size[1]+3)
+								for i, product in enumerate(PRODUCTS):
+									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
+										collision = True
+										break
+								if collision == False:
+									self.rect = self.rect.move(0,1)
 								downc += 1
 				else:
 					xclip = logistic.rect.clipline(xline) #yclip containts line part coordinates which is in logistic rect
 					if xclip:	# evaluates if yclip has contents and there is inside the 
 						if logistic.direction == "left":
 							if leftc == 0:
-								self.rect = self.rect.move(-1,0)
+								collision_box = pygame.Rect(self.rect[0]-3, self.rect[1], self.size[0]+3, self.size[1])
+								for i, product in enumerate(PRODUCTS):
+									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
+										collision = True
+										break
+								if collision == False:
+									self.rect = self.rect.move(-1,0)
 								leftc += 1
 						elif logistic.direction == "right":
 							if rightc == 0:
-								self.rect = self.rect.move(1,0)
+								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0]+3, self.size[1])
+								for i, product in enumerate(PRODUCTS):
+									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
+										collision = True
+										break
+								if collision == False:
+									self.rect = self.rect.move(1,0)
 								rightc += 1
 			machine_index = self.rect.collidelist(MACHINES)
 			if machine_index >= 0:
 				machine = MACHINES[machine_index]
 				if isinstance(machine, StorageUnit):
-					self.rect = ((machine.coordinates[0]+3, machine.coordinates[1]+3), self.size)
+					self.rect.update((machine.coordinates[0]+3, machine.coordinates[1]+3), self.size)
 					self.busy = True
 
 class Box(Product):
