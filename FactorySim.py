@@ -366,6 +366,7 @@ class RobotArm(Logistics):
 	"""
 	def __init__(self,coordinates):
 		super().__init__(coordinates)
+		self.grabbed = None
 		self.size = (25,25)
 		self.rect = pygame.Rect(coordinates, self.size)
 		self.images = dict()
@@ -373,8 +374,9 @@ class RobotArm(Logistics):
 			path = "res/factory/robotArm/robotArm" + str(i+1) + ".png"
 			tempimage = pygame.image.load(path).convert()
 			self.images[i+1] = pygame.transform.smoothscale(tempimage, self.size)		
-		self.image = self.images[1]
 		self.direction = "right"
+		self.image_index = 3
+		self.image = self.images[self.image_index]
 		poss1 = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
 		poss2 = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
 		poss3 = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
@@ -382,14 +384,70 @@ class RobotArm(Logistics):
 		self.input_rects = self.output_rects = [poss1, poss2, poss3, poss4]
 	
 	def update(self):
-		if self.direction == "up":
-			self.image = self.images[1]
-		elif self.direction == "down":
-			self.image = self.images[5]
-		elif self.direction == "left":
-			self.image = self.images[7]
-		elif self.direction == "right":
-			self.image = self.images[3]
+		if self.grabbed == None:
+			for i, product in enumerate(PRODUCTS):
+				if isinstance(product, Bottles):
+					index = product.rect.collidelist(self.input_rects)
+					if index > -1:
+						if index == 0: # left input
+							if self.image_index == 7:
+								self.grabbed = product.ID
+								product.rect = product.rect.move(5,-1)
+								product.busy = True
+							elif self.image_index in [8,1,2,3]:
+								newindex = self.image_index -1
+								if newindex == 0:
+									newindex = 8
+								self.image_index = newindex
+								self.image = self.images[newindex]
+							elif self.image_index in [4,5,6]:
+								newindex = self.image_index + 1
+								self.image_index = newindex
+								self.image = self.images[newindex]
+						elif index == 1: # right input
+							if self.image_index == 3:
+								self.grabbed = product.ID
+								product.rect = product.rect.move(-5,-1)
+								product.busy = True
+							elif self.image_index in [7,8,1,2]:
+								newindex = self.image_index +1
+								if newindex == 9:
+									newindex = 1
+								self.image_index = newindex
+								self.image = self.images[newindex]
+							elif self.image_index in [4,5,6]:
+								newindex = self.image_index - 1
+								self.image_index = newindex
+								self.image = self.images[newindex]
+						elif index == 2: # upper input
+							if self.image_index == 1:
+								self.grabbed = product.ID
+								product.rect = product.rect.move(0,5)
+								product.busy = True
+							elif self.image_index in [5,6,7,8]:
+								newindex = self.image_index + 1
+								if newindex == 9:
+									newindex = 1
+								self.image_index = newindex
+								self.image = self.images[newindex]
+							elif self.image_index in [2,3,4]:
+								newindex = self.image_index - 1
+								self.image_index = newindex
+								self.image = self.images[newindex]
+						elif index == 3: # lower input
+							if self.image_index == 5:
+								self.grabbed = product.ID
+								product.rect = product.rect.move(0,-5)
+								product.busy = True
+							elif self.image_index in [6,7,8]:
+								newindex = self.image_index - 1
+								self.image_index = newindex
+								self.image = self.images[newindex]
+							elif self.image_index in [1,2,3,4]:
+								newindex = self.image_index + 1
+								self.image_index = newindex
+								self.image = self.images[newindex]
+						break
 
 
 class Product:
@@ -533,11 +591,10 @@ def main():
 	MACHINES.append(bottle_adder2)
 	storage1 = StorageUnit((75,150))
 	MACHINES.append(storage1)
-	storage2 = StorageUnit((325,200))
-	MACHINES.append(storage2)
+
 
 	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
-	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,175)]
+	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,150)]
 	merged_lists = roller_coordinates+roller_coordinates2
 	for i in range(0,len(merged_lists)):
 		new_roller = RollerConveyor(merged_lists[i])
@@ -546,19 +603,20 @@ def main():
 	LOGISTICS.append(TIntersection1)
 	robotArm1 = RobotArm((300,150))
 	LOGISTICS.append(robotArm1)
-	TIntersection2 = TIntersection((325,150), "down")
-	LOGISTICS.append(TIntersection2)
+
 
 	box1 = Box((75,50))
 	PRODUCTS.append(box1)
 	bottles1 = Bottles((350,75))
 	PRODUCTS.append(bottles1)
-	BOXTIMER, t = pygame.USEREVENT+1, 4000
-	pygame.time.set_timer(BOXTIMER, t)
+	SPAWNTIMER, t = pygame.USEREVENT+1, 4000
+	pygame.time.set_timer(SPAWNTIMER, t)
+	CHECKTIMER, t = pygame.USEREVENT+1, 800
+	pygame.time.set_timer(CHECKTIMER, t)
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
-	for j in range(0,len(LOGISTICS)+3):
+	for j in range(0,len(LOGISTICS)+2):
 		for i,entity in enumerate(LOGISTICS):
 			if isinstance(entity, Conveyor):
 				entity.get_interfaces()
@@ -569,10 +627,14 @@ def main():
 		screen.fill(BACKGROUND)
 		create_grid(screen)
 		for event in pygame.event.get():
-			if event.type == BOXTIMER:
+			if event.type == SPAWNTIMER:
+				for i,machine in enumerate(LOGISTICS):
+					if isinstance(machine, RobotArm):
+						machine.update()
+				#print(IDS.keys())	
+			elif event.type == CHECKTIMER:
 				for i,machine in enumerate(MACHINES):
 					machine.update()
-				#print(IDS.keys())
 		for i,machine in enumerate(MACHINES):
 				screen.blit(machine.image, machine.rect)
 		if counter == 0:
