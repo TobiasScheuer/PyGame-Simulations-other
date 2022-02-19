@@ -3,6 +3,7 @@ import pygame.gfxdraw
 import random
 
 """
+TODO: Fix input/output detection (see conveyors left of robot), adapt robot grab coordinates
 Goal of this Simulation:
 Visualize a HMI for a 2-D factory including manufacturing machines, intralogistics, productivity stats.
 [3-D factory by having floors, switch floor with arrows on display]
@@ -88,21 +89,24 @@ class Resources:
 		goes through all currently existing machines and logistic elements,
 		if one of their output interfaces overlap with own rect -> interface found -> add to own input interfaces
 		"""
-		for i,machine in enumerate(MACHINES):
-			outputlist_indexes = self.rect.collidelistall(machine.output_rect)
-			if len(outputlist_indexes) > 0:
-				for j in range(0, len(outputlist_indexes)):
-					if machine.output_rect[outputlist_indexes[j]] not in self.input_rect:
-						self.input_rect.append(machine.output_rect[outputlist_indexes[j]])
-		for i,logistic in enumerate(LOGISTICS):
+		combinedlist = MACHINES + LOGISTICS
+		for i,logistic in enumerate(combinedlist):
 			if logistic.coordinates == self.coordinates:
-				pass
+				if self.ID != logistic.ID:
+					print(self.ID)
+					print(logistic.ID)
 			else:
 				outputlist_indexes = self.rect.collidelistall(logistic.output_rect)
 				if len(outputlist_indexes) > 0:
 					for j in range(0, len(outputlist_indexes)):
 						if logistic.output_rect[outputlist_indexes[j]] not in self.input_rect:
 							self.input_rect.append(logistic.output_rect[outputlist_indexes[j]])
+				inputlist_indexes = self.rect.collidelistall(logistic.input_rect)
+				if len(inputlist_indexes) > 0:
+					for j in range(0, len(inputlist_indexes)):
+						if logistic.input_rect[inputlist_indexes[j]] not in self.output_rect:
+							self.output_rect.append(logistic.input_rect[inputlist_indexes[j]])
+					
 
 	
 class Machine(Resources):
@@ -364,7 +368,7 @@ class RobotArm(Logistics):
 	"""
 	doc
 	"""
-	def __init__(self,coordinates):
+	def __init__(self,coordinates, direction):
 		super().__init__(coordinates)
 		self.grabbed = None
 		self.size = (25,25)
@@ -374,22 +378,42 @@ class RobotArm(Logistics):
 			path = "res/factory/robotArm/robotArm" + str(i+1) + ".png"
 			tempimage = pygame.image.load(path).convert()
 			self.images[i+1] = pygame.transform.smoothscale(tempimage, self.size)		
-		self.direction = "right"
-		self.image_index = 3
+		left_interface = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+		right_interface = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+		up_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+		down_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
+		self.direction = direction
+		if direction == "up":
+			self.image_index = 1
+			self.output_rect.append(up_interface)
+			self.input_rect = [right_interface, down_interface, left_interface]
+		elif direction == "right":
+			self.image_index = 3
+			self.output_rect.append(right_interface)
+			self.input_rect = [up_interface, down_interface, left_interface]
+		elif direction == "down":
+			self.image_index = 5
+			self.output_rect.append(down_interface)
+			self.input_rect = [up_interface, right_interface, left_interface]
+		elif direction == "left":
+			self.image_index = 7
+			self.output_rect.append(left_interface)
+			self.input_rect = [up_interface, right_interface, down_interface]
 		self.image = self.images[self.image_index]
-		poss1 = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
-		poss2 = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
-		poss3 = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
-		poss4 = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)	
-		self.input_rects = self.output_rects = [poss1, poss2, poss3, poss4]
+		print(self.output_rect)
+		print(self.input_rect)
 	
 	def update(self):
 		if self.grabbed == None:
 			for i, product in enumerate(PRODUCTS):
 				if isinstance(product, Bottles):
-					index = product.rect.collidelist(self.input_rects)
+					index = product.rect.collidelist(self.input_rect)
 					if index > -1:
-						if index == 0: # left input
+						left_interface = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+						right_interface = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+						up_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+						down_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
+						if self.input_rect[index] == left_interface: # left input
 							if self.image_index == 7:
 								self.grabbed = product.ID
 								product.rect = product.rect.move(5,-1)
@@ -404,7 +428,7 @@ class RobotArm(Logistics):
 								newindex = self.image_index + 1
 								self.image_index = newindex
 								self.image = self.images[newindex]
-						elif index == 1: # right input
+						elif self.input_rect[index] == right_interface: # right input
 							if self.image_index == 3:
 								self.grabbed = product.ID
 								product.rect = product.rect.move(-5,-1)
@@ -419,7 +443,7 @@ class RobotArm(Logistics):
 								newindex = self.image_index - 1
 								self.image_index = newindex
 								self.image = self.images[newindex]
-						elif index == 2: # upper input
+						elif self.input_rect[index] == up_interface: # upper input
 							if self.image_index == 1:
 								self.grabbed = product.ID
 								product.rect = product.rect.move(0,5)
@@ -434,7 +458,7 @@ class RobotArm(Logistics):
 								newindex = self.image_index - 1
 								self.image_index = newindex
 								self.image = self.images[newindex]
-						elif index == 3: # lower input
+						elif self.input_rect[index] == down_interface: # lower input
 							if self.image_index == 5:
 								self.grabbed = product.ID
 								product.rect = product.rect.move(0,-5)
@@ -595,13 +619,14 @@ def main():
 
 	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
 	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,150)]
-	merged_lists = roller_coordinates+roller_coordinates2
+	roller_coordinates3 = [(275,150), (250,150), (250,175), (300,125)]
+	merged_lists = roller_coordinates+roller_coordinates2+roller_coordinates3
 	for i in range(0,len(merged_lists)):
 		new_roller = RollerConveyor(merged_lists[i])
 		LOGISTICS.append(new_roller)
 	TIntersection1 = TIntersection((100,50), None)
 	LOGISTICS.append(TIntersection1)
-	robotArm1 = RobotArm((300,150))
+	robotArm1 = RobotArm((300,150), "up")
 	LOGISTICS.append(robotArm1)
 
 
@@ -616,11 +641,11 @@ def main():
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
-	for j in range(0,len(LOGISTICS)+2):
+	for j in range(0,len(LOGISTICS)+1):
 		for i,entity in enumerate(LOGISTICS):
 			if isinstance(entity, Conveyor):
 				entity.get_interfaces()
-				entity.check_orientation()
+				entity.check_orientation()	
 	for i, machine in enumerate(MACHINES):
 			machine.get_interfaces()
 	while 1:
