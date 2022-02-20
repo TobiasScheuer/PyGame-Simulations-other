@@ -148,6 +148,7 @@ class ProductAdder(Machine):
 		counter = 0
 		for i, logistic in enumerate(LOGISTICS):
 			coordinates = (0,0)
+			collision = False
 			if self.orientation == "horizontal":
 				if self.output_rect[0] in logistic.input_rect:	# right output
 					coordinates = (self.output_rect[0][0], self.output_rect[0][1] )			
@@ -162,10 +163,17 @@ class ProductAdder(Machine):
 				self.generate_ID()
 				if self.product == "boxes":
 					newProduct = Box(coordinates)
+					collision_box = pygame.Rect(coordinates, newProduct.size)
 				elif self.product == "bottles":
 					newProduct = Bottles(coordinates)
-				PRODUCTS.append(newProduct)
-				counter += 1
+					collision_box = pygame.Rect(coordinates, newProduct.size)
+				collision = check_collision(self.rect, collision_box)
+				if collision == False:
+					PRODUCTS.append(newProduct)
+					counter += 1
+				else:
+					string = str(type(self)) + " " + self.ID + " overflow!"
+					print(string)
 			if counter == 2:
 				break
 		
@@ -400,8 +408,6 @@ class RobotArm(Logistics):
 			self.output_rect.append(left_interface)
 			self.input_rect = [up_interface, right_interface, down_interface]
 		self.image = self.images[self.image_index]
-		print(self.output_rect)
-		print(self.input_rect)
 	
 	def update(self):
 		if self.grabbed == None:
@@ -478,22 +484,18 @@ class Product:
 	"""
 	doc
 	"""
-	def generate_ID(self):
-		ID = str(random.randint(1,9999))
-		while len(ID) < 4:
-			ID = "0" + ID
-		while ID in IDS.keys():
-			ID = str(random.randint(1,9999))
-			while len(ID) < 4:
-				ID = "0" + ID
-		self.ID = ID
-
 	def __init__(self, coordinates):
+		"""
+		doc
+		"""
 		self.generate_ID()
 		IDS[self.ID] = type(self)
 		self.busy = False
 	
 	def update(self):
+		"""
+		doc
+		"""
 		if self.busy == False:
 			upc = 0
 			downc = 0
@@ -511,20 +513,14 @@ class Product:
 						if logistic.direction == "up":
 							if upc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1]-3, self.size[0], self.size[1]+3)
-								for i, product in enumerate(PRODUCTS):
-									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
-										collision = True
-										break
+								collision = check_collision(self.rect, collision_box)
 								if collision == False:
 									self.rect = self.rect.move(0,-1)
 								upc += 1
 						elif logistic.direction == "down":
 							if downc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0], self.size[1]+3)
-								for i, product in enumerate(PRODUCTS):
-									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
-										collision = True
-										break
+								collision = check_collision(self.rect, collision_box)
 								if collision == False:
 									self.rect = self.rect.move(0,1)
 								downc += 1
@@ -534,20 +530,14 @@ class Product:
 						if logistic.direction == "left":
 							if leftc == 0:
 								collision_box = pygame.Rect(self.rect[0]-3, self.rect[1], self.size[0]+3, self.size[1])
-								for i, product in enumerate(PRODUCTS):
-									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
-										collision = True
-										break
+								collision = check_collision(self.rect, collision_box)
 								if collision == False:
 									self.rect = self.rect.move(-1,0)
 								leftc += 1
 						elif logistic.direction == "right":
 							if rightc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0]+3, self.size[1])
-								for i, product in enumerate(PRODUCTS):
-									if product.rect.colliderect(collision_box) == True and not product.rect == self.rect:
-										collision = True
-										break
+								collision = check_collision(self.rect, collision_box)
 								if collision == False:
 									self.rect = self.rect.move(1,0)
 								rightc += 1
@@ -558,13 +548,28 @@ class Product:
 					self.rect.update((machine.coordinates[0]+3, machine.coordinates[1]+3), self.size)
 					self.busy = True
 
+	def generate_ID(self):
+		"""
+		doc
+		"""
+		ID = str(random.randint(1,9999))
+		while len(ID) < 4:
+			ID = "0" + ID
+		while ID in IDS.keys():
+			ID = str(random.randint(1,9999))
+			while len(ID) < 4:
+				ID = "0" + ID
+		self.ID = ID
+
 class Box(Product):
 	"""
 	doc
 	"""
+	size = (19,17)
+
 	def __init__(self, coordinates):
 		super().__init__(coordinates)
-		self.size = (19,17)
+		
 		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
 		tempimage = pygame.image.load("res/factory/box.png").convert_alpha()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)	
@@ -574,9 +579,10 @@ class Bottles(Product):
 	"""
 	doc
 	"""
+	size = (19,17)
+	
 	def __init__(self, coordinates):
 		super().__init__(coordinates)
-		self.size = (19,17)
 		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
 		tempimage = pygame.image.load("res/factory/bottles.png").convert_alpha()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)
@@ -584,6 +590,19 @@ class Bottles(Product):
 		self.image_boxed = pygame.transform.smoothscale(tempimage, self.size)
 		
 
+def check_collision(own_rect, collision_box):
+	"""
+	method to check if a moved or spawned product would collide with another product
+	takes the collision_box ( a pygame.Rect) as input 
+	and checks for rect overlap with all other products
+	returns True for a detected collision and False if not
+	"""
+	collision = False
+	for i, product in enumerate(PRODUCTS):
+		if product.rect.colliderect(collision_box) == True and not product.rect == own_rect:
+			collision = True
+			break
+	return collision
 
 def create_grid(screen):
 	"""
@@ -634,10 +653,10 @@ def main():
 	PRODUCTS.append(box1)
 	bottles1 = Bottles((350,75))
 	PRODUCTS.append(bottles1)
-	SPAWNTIMER, t = pygame.USEREVENT+1, 4000
+	SPAWNTIMER, t = pygame.USEREVENT+1, 5000
 	pygame.time.set_timer(SPAWNTIMER, t)
-	CHECKTIMER, t = pygame.USEREVENT+1, 800
-	pygame.time.set_timer(CHECKTIMER, t)
+	CHECKTIMER, t2 = pygame.USEREVENT+2, 800
+	pygame.time.set_timer(CHECKTIMER, t2)
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
@@ -651,15 +670,16 @@ def main():
 	while 1:
 		screen.fill(BACKGROUND)
 		create_grid(screen)
+		#print(pygame.event.get())
 		for event in pygame.event.get():
 			if event.type == SPAWNTIMER:
-				for i,machine in enumerate(LOGISTICS):
-					if isinstance(machine, RobotArm):
-						machine.update()
+				for j, machine in enumerate(MACHINES):
+					machine.update()
 				#print(IDS.keys())	
 			elif event.type == CHECKTIMER:
-				for i,machine in enumerate(MACHINES):
-					machine.update()
+				for i, logistic in enumerate(LOGISTICS):
+					if isinstance(logistic, RobotArm):
+						logistic.update()
 		for i,machine in enumerate(MACHINES):
 				screen.blit(machine.image, machine.rect)
 		if counter == 0:
