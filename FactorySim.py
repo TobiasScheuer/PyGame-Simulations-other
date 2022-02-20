@@ -178,9 +178,14 @@ class StorageUnit(Machine):
 		tempimage = pygame.image.load("res/factory/storage.png").convert()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)
 		self.get_interfaces()
+		print(self.input_rect)
 	
 	def update(self):
-		pass
+		for i, product in enumerate(PRODUCTS):
+			index = product.rect.collidelist(self.input_rect)
+			if index > -1:
+				new_coordinates = (self.rect[0]+2, self.rect[1]+2)
+				product.rect.update(new_coordinates, product.size)
 
 class Logistics(Resources):
 	"""
@@ -561,14 +566,14 @@ class Product:
 					if yclip:	# evaluates if yclip has contents and there is inside the 
 						if logistic.direction == "up":
 							if upc == 0:
-								collision_box = pygame.Rect(self.rect[0], self.rect[1]-3, self.size[0], self.size[1]+3)
+								collision_box = pygame.Rect(self.rect[0], self.rect[1]-1, self.size[0], self.size[1]+1)
 								collision = check_collision(self.rect, collision_box, False)
 								if collision == False:
 									self.rect = self.rect.move(0,-1)
 								upc += 1
 						elif logistic.direction == "down":
 							if downc == 0:
-								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0], self.size[1]+3)
+								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0], self.size[1]+1)
 								collision = check_collision(self.rect, collision_box, False)
 								if collision == False:
 									self.rect = self.rect.move(0,1)
@@ -578,14 +583,14 @@ class Product:
 					if xclip:	# evaluates if yclip has contents and there is inside the 
 						if logistic.direction == "left":
 							if leftc == 0:
-								collision_box = pygame.Rect(self.rect[0]-3, self.rect[1], self.size[0]+3, self.size[1])
+								collision_box = pygame.Rect(self.rect[0]-1, self.rect[1], self.size[0]+1, self.size[1])
 								collision = check_collision(self.rect, collision_box, False)
 								if collision == False:
 									self.rect = self.rect.move(-1,0)
 								leftc += 1
 						elif logistic.direction == "right":
 							if rightc == 0:
-								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0]+3, self.size[1])
+								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0]+1, self.size[1])
 								collision = check_collision(self.rect, collision_box, False, )
 								if collision == False:
 									self.rect = self.rect.move(1,0)
