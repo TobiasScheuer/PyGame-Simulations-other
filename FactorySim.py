@@ -178,7 +178,6 @@ class StorageUnit(Machine):
 		tempimage = pygame.image.load("res/factory/storage.png").convert()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)
 		self.get_interfaces()
-		print(self.input_rect)
 	
 	def update(self):
 		for i, product in enumerate(PRODUCTS):
@@ -419,6 +418,7 @@ class RobotArm(Logistics):
 	def __init__(self,coordinates, direction):
 		super().__init__(coordinates)
 		self.grabbed = None
+		self.counter = 0
 		self.size = (25,25)
 		self.rect = pygame.Rect(coordinates, self.size)
 		self.images = dict()
@@ -450,89 +450,203 @@ class RobotArm(Logistics):
 		self.image = self.images[self.image_index]
 	
 	def update(self):
+		newindex = self.image_index
+		new_coordinates = None
 		if self.grabbed == None:
+			if self.counter < 6:
+				self.counter +=1
+			else:
+				for i, product in enumerate(PRODUCTS):
+					if isinstance(product, Bottles):
+						index = product.rect.collidelist(self.input_rect)
+						if index > -1:
+							left_interface = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+							right_interface = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+							up_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+							down_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
+							if self.input_rect[index] == left_interface: # left input
+								if self.image_index == 7:
+									self.grabbed = product.ID
+									product.busy = True
+								else: 
+									newindex = self.find_new_position(7)
+							elif self.input_rect[index] == right_interface: # right input
+								if self.image_index == 3:
+									self.grabbed = product.ID
+									product.busy = True
+								else:
+									newindex = self.find_new_position(3)
+							elif self.input_rect[index] == up_interface: # upper input
+								if self.image_index == 1:
+									self.grabbed = product.ID
+									product.busy = True
+								else:
+									newindex = self.find_new_position(1)
+							elif self.input_rect[index] == down_interface: # lower input
+								if self.image_index == 5:
+									self.grabbed = product.ID
+									product.busy = True
+								else:
+									newindex = self.find_new_position(5)
+							self.image_index = newindex
+							self.image = self.images[newindex]
+							if not self.grabbed == None: 
+								new_coordinates = self.moved_product_coordinates()
+								product.rect.update(new_coordinates, product.size)
+							break
+		else: # a product is grabbed
 			for i, product in enumerate(PRODUCTS):
-				if isinstance(product, Bottles):
-					index = product.rect.collidelist(self.input_rect)
-					if index > -1:
-						left_interface = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
-						right_interface = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
-						up_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
-						down_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
-						if self.input_rect[index] == left_interface: # left input
-							if self.image_index == 7:
-								self.grabbed = product.ID
-								product.busy = True
-							elif self.image_index in [8,1,2,3]:
-								newindex = self.image_index -1
-								if newindex == 0:
-									newindex = 8
-								self.image_index = newindex
-								self.image = self.images[newindex]
-							elif self.image_index in [4,5,6]:
-								newindex = self.image_index + 1
-								self.image_index = newindex
-								self.image = self.images[newindex]
-						elif self.input_rect[index] == right_interface: # right input
-							if self.image_index == 3:
-								self.grabbed = product.ID
-								product.busy = True
-							elif self.image_index in [7,8,1,2]:
-								newindex = self.image_index +1
-								if newindex == 9:
-									newindex = 1
-								self.image_index = newindex
-								self.image = self.images[newindex]
-							elif self.image_index in [4,5,6]:
-								newindex = self.image_index - 1
-								self.image_index = newindex
-								self.image = self.images[newindex]
-						elif self.input_rect[index] == up_interface: # upper input
-							if self.image_index == 1:
-								self.grabbed = product.ID
-								product.busy = True
-							elif self.image_index in [5,6,7,8]:
-								newindex = self.image_index + 1
-								if newindex == 9:
-									newindex = 1
-								self.image_index = newindex
-								self.image = self.images[newindex]
-							elif self.image_index in [2,3,4]:
-								newindex = self.image_index - 1
-								self.image_index = newindex
-								self.image = self.images[newindex]
-						elif self.input_rect[index] == down_interface: # lower input
-							if self.image_index == 5:
-								self.grabbed = product.ID
-								product.busy = True
-							elif self.image_index in [6,7,8]:
-								newindex = self.image_index - 1
-								self.image_index = newindex
-								self.image = self.images[newindex]
-							elif self.image_index in [1,2,3,4]:
-								newindex = self.image_index + 1
-								self.image_index = newindex
-								self.image = self.images[newindex]
-						if not self.grabbed == None:
-							if self.image_index == 1:
-								new_coordinates = (self.rect[0]+5, self.rect[1]-10)
-							elif self.image_index == 2:
-								new_coordinates = (self.rect[0]+10, self.rect[1]-5)
-							elif self.image_index == 3:
-								new_coordinates = (self.rect[0]+18, self.rect[1]-1)
-							elif self.image_index == 4:
-								new_coordinates = (self.rect[0]+10, self.rect[1]+5)
-							elif self.image_index == 5:
-								new_coordinates = (self.rect[0]+5, self.rect[1]+10)
-							elif self.image_index == 6:
-								new_coordinates = (self.rect[0], self.rect[1]+5)
-							elif self.image_index == 7:
-								new_coordinates = (self.rect[0]-5, self.rect[1]-1)
-							elif self.image_index == 8:
-								new_coordinates = (self.rect[0]-10, self.rect[1]-5)
+				if product.ID == self.grabbed: # find grabbed product
+					if isinstance(product, Bottles): 
+						for j, product2 in enumerate(PRODUCTS):
+							if isinstance(product2, Box) and product2.content == None:
+								index = product2.rect.collidelist(self.input_rect)
+								if index > -1:
+									left_interface = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+									right_interface = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+									up_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+									down_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
+									if self.input_rect[index] == left_interface: # left input
+										if self.image_index == 7:
+											product2.image = product2.image_boxed_bottles
+											product2.busy = True
+											product2.content = "Bottles"
+											self.grabbed = product2.ID
+											self.counter = 0
+											product.rect.update((-25,-25), product.size)
+										else:
+											newindex = self.find_new_position(7)
+									elif self.input_rect[index] == right_interface: # right input
+										if self.image_index == 3:
+											product2.image = product2.image_boxed_bottles
+											product2.busy = True
+											product2.content = "Bottles"
+											self.grabbed = product2.ID
+											self.counter = 0
+											product.rect.update((-25,-25), product.size)
+										else:
+											newindex = self.find_new_position(3)
+									elif self.input_rect[index] == up_interface: # upper input
+										if self.image_index == 1:
+											product2.image = product2.image_boxed_bottles
+											product2.busy = True
+											product2.content = "Bottles"
+											self.grabbed = product2.ID
+											self.counter = 0
+											product.rect.update((-25,-25), product.size)
+										else:
+											newindex = self.find_new_position(1)
+									elif self.input_rect[index] == down_interface: # lower input
+										if self.image_index == 5:
+											product2.image = product2.image_boxed_bottles
+											product2.busy = True
+											product2.content = "Bottles"
+											self.grabbed = product2.ID
+											self.counter = 0
+											product.rect.update((-25,-25), product.size)
+										else:
+											newindex = self.find_new_position(5)
+									self.image_index = newindex
+									self.image = self.images[newindex]		
+						if product.ID == self.grabbed: 
+							new_coordinates = self.moved_product_coordinates()
 							product.rect.update(new_coordinates, product.size)
 						break
+					elif isinstance(product, Box):
+						if self.counter < 30:
+							self.counter += 1
+						else:
+							self.counter = 25
+							left_interface = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+							right_interface = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+							up_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+							down_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
+							if self.output_rect[0] == left_interface: # left output
+								if self.image_index == 7:
+									self.grabbed = None
+									product.busy = False
+									new_coordinates = (self.coordinates[0]-1, self.coordinates[1])
+									self.counter = 0
+								else:
+									newindex = self.find_new_position(7)
+							elif self.output_rect[0] == right_interface: # right output
+								if self.image_index == 3:
+									self.grabbed = None
+									product.busy = False
+									new_coordinates = (self.coordinates[0]+24, self.coordinates[1])
+									self.counter = 0
+								else:
+									newindex = self.find_new_position(3)
+							elif self.output_rect[0] == up_interface: # upper output
+								if self.image_index == 1:
+									self.grabbed = None
+									product.busy = False
+									new_coordinates = (self.coordinates[0]+3, self.coordinates[1]-product.size[1])
+									self.counter = 0
+								else:
+									newindex = self.find_new_position(1)
+							elif self.output_rect[0] == down_interface: # lower output
+								if self.image_index == 5:
+									self.grabbed = None
+									product.busy = False
+									new_coordinates = (self.coordinates[0], self.coordinates[1]+24)
+									self.counter = 0
+								else:
+									newindex = self.find_new_position(5)
+							self.image_index = newindex
+							self.image = self.images[newindex]	
+							if self.grabbed != None:	 
+								new_coordinates = self.moved_product_coordinates()
+							product.rect.update(new_coordinates, product.size)
+							break
 
+
+	def find_new_position(self, target_position):
+		positions = [1,2,3,4,5,6,7,8]       # 1,2,x,4,5,6,7,8                 # 1,2,3,4,5,6,x
+		target_index = positions.index(target_position)
+		newindex = None
+		left_half = positions[0:target_index]
+		right_half = positions[target_index+1:]
+		while len(left_half) < 4:
+			left_half.append(right_half[-1])
+			right_half.pop()
+		while len(right_half) < 3:
+			right_half.append(left_half[0])
+			left_half.pop(0)
+		if self.image_index == target_position:
+			pass
+		elif self.image_index in left_half:
+			newindex = self.image_index + 1
+		elif self.image_index in right_half:
+			newindex = self.image_index - 1
+		if newindex == 9 or newindex == 0:
+			if target_position <= 5:
+				newindex = 1
+			else:
+				newindex = 8
+		return newindex
+
+	def moved_product_coordinates(self):
+		new_coordinates = (0,0)
+		if self.image_index == 1:
+			new_coordinates = (self.rect[0]+5, self.rect[1]-10)
+		elif self.image_index == 2:
+			new_coordinates = (self.rect[0]+10, self.rect[1]-5)
+		elif self.image_index == 3:
+			new_coordinates = (self.rect[0]+18, self.rect[1]-1)
+		elif self.image_index == 4:
+			new_coordinates = (self.rect[0]+10, self.rect[1]+5)
+		elif self.image_index == 5:
+			new_coordinates = (self.rect[0]+5, self.rect[1]+10)
+		elif self.image_index == 6:
+			new_coordinates = (self.rect[0], self.rect[1]+5)
+		elif self.image_index == 7:
+			new_coordinates = (self.rect[0]-5, self.rect[1]-1)
+		elif self.image_index == 8:
+			new_coordinates = (self.rect[0]-10, self.rect[1]-5)
+		return new_coordinates
+
+		
 
 class Product:
 	"""
@@ -613,8 +727,11 @@ class Box(Product):
 		
 		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
 		tempimage = pygame.image.load("res/factory/box.png").convert_alpha()
-		self.image = pygame.transform.smoothscale(tempimage, self.size)	
-		self.content = None
+		self.image_empty = pygame.transform.smoothscale(tempimage, self.size)	
+		tempimage = pygame.image.load("res/factory/boxedBottles.png").convert_alpha()
+		self.image_boxed_bottles = pygame.transform.smoothscale(tempimage, self.size)
+		self.image = self.image_empty
+		self.content = None 
 
 class Bottles(Product):
 	"""
@@ -627,8 +744,7 @@ class Bottles(Product):
 		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
 		tempimage = pygame.image.load("res/factory/bottles.png").convert_alpha()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)
-		tempimage = pygame.image.load("res/factory/boxedBottles.png").convert_alpha()
-		self.image_boxed = pygame.transform.smoothscale(tempimage, self.size)
+		
 		
 
 def check_collision(own_rect, collision_box, ignore_machines):
@@ -695,18 +811,23 @@ def main():
 	MACHINES.append(box_adder2)
 	box_adder3 = ProductAdder((225,200), "horizontal", "boxes")
 	MACHINES.append(box_adder3)
+	box_adder4 = ProductAdder((300,225), "vertical", "boxes")
+	MACHINES.append(box_adder4)
 	bottle_adder1 = ProductAdder((100,0), "vertical", "bottles")
 	MACHINES.append(bottle_adder1)
 	bottle_adder2 = ProductAdder((350,100), "vertical", "bottles")
 	MACHINES.append(bottle_adder2)
 	storage1 = StorageUnit((75,150))
 	MACHINES.append(storage1)
+	storage2 = StorageUnit((250,50))
+	MACHINES.append(storage2)
 
 
 	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
 	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,150)]
-	roller_coordinates3 = [(275,150), (250,150), (250,175), (250,200), (300,125)]
-	merged_lists = roller_coordinates+roller_coordinates2+roller_coordinates3
+	roller_coordinates3 = [(275,150), (250,150), (250,175), (250,200), (300,125), (300,100), (275,100), (250,100), (250,75)]
+	roller_coordinates4 = [(300,175), (300,200)]
+	merged_lists = roller_coordinates+roller_coordinates2+roller_coordinates3+roller_coordinates4
 	for i in range(0,len(merged_lists)):
 		new_roller = RollerConveyor(merged_lists[i])
 		LOGISTICS.append(new_roller)
