@@ -125,7 +125,7 @@ class ProductAdder(Machine):
 		if orientation == "horizontal":
 			output_right = pygame.Rect((coordinates[0]+24, coordinates[1]), (3,25))
 			self.output_rect.append(output_right)
-			output_left = pygame.Rect((coordinates[0]-1, coordinates[1]), (3,25))
+			output_left = pygame.Rect((coordinates[0]-3, coordinates[1]), (3,25))
 			self.output_rect.append(output_left)
 			
 		elif orientation == "vertical":
@@ -150,14 +150,13 @@ class ProductAdder(Machine):
 				elif self.output_rect[1] in logistic.input_rect:
 					coordinates = (self.output_rect[1][0], self.output_rect[1][1]-1 )
 			if coordinates != (0,0):
-				self.ID = generate_ID()
 				if self.product == "boxes":
 					newProduct = Box(coordinates)
 					collision_box = pygame.Rect(coordinates, newProduct.size)
 				elif self.product == "bottles":
 					newProduct = Bottles(coordinates)
 					collision_box = pygame.Rect(coordinates, newProduct.size)
-				collision = check_collision(self.rect, collision_box)
+				collision = check_collision(self.rect, collision_box, True)
 				if collision == False:
 					PRODUCTS.append(newProduct)
 					counter += 1
@@ -563,31 +562,31 @@ class Product:
 						if logistic.direction == "up":
 							if upc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1]-3, self.size[0], self.size[1]+3)
-								collision = check_collision(self.rect, collision_box)
+								collision = check_collision(self.rect, collision_box, False)
 								if collision == False:
 									self.rect = self.rect.move(0,-1)
 								upc += 1
 						elif logistic.direction == "down":
 							if downc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0], self.size[1]+3)
-								collision = check_collision(self.rect, collision_box)
+								collision = check_collision(self.rect, collision_box, False)
 								if collision == False:
 									self.rect = self.rect.move(0,1)
 								downc += 1
-				else:
+				else:   # direction == left or right
 					xclip = logistic.rect.clipline(xline) #yclip containts line part coordinates which is in logistic rect
 					if xclip:	# evaluates if yclip has contents and there is inside the 
 						if logistic.direction == "left":
 							if leftc == 0:
 								collision_box = pygame.Rect(self.rect[0]-3, self.rect[1], self.size[0]+3, self.size[1])
-								collision = check_collision(self.rect, collision_box)
+								collision = check_collision(self.rect, collision_box, False)
 								if collision == False:
 									self.rect = self.rect.move(-1,0)
 								leftc += 1
 						elif logistic.direction == "right":
 							if rightc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0]+3, self.size[1])
-								collision = check_collision(self.rect, collision_box)
+								collision = check_collision(self.rect, collision_box, False, )
 								if collision == False:
 									self.rect = self.rect.move(1,0)
 								rightc += 1
@@ -627,18 +626,32 @@ class Bottles(Product):
 		self.image_boxed = pygame.transform.smoothscale(tempimage, self.size)
 		
 
-def check_collision(own_rect, collision_box):
+def check_collision(own_rect, collision_box, ignore_machines):
 	"""
-	method to check if a moved or spawned product would collide with another product
-	takes the collision_box ( a pygame.Rect) as input 
-	and checks for rect overlap with all other products
-	returns True for a detected collision and False if not
+	method to check if a moved or spawned product would collide with another product or machine
+	IN:
+		collision_box: pygame.Rect box representing the area where a product wants to move to
+		ignore_machines: flag if collisions with machines should be ignored
+	DO:
+		checks for rect overlap with all other products and machines
+	OUT:
+		returns True for a detected collision and False if not
 	"""
 	collision = False
 	for i, product in enumerate(PRODUCTS):
 		if product.rect.colliderect(collision_box) == True and not product.rect == own_rect:
 			collision = True
 			break
+	if ignore_machines == False:
+		for j, machine in enumerate(MACHINES):
+			if machine.rect.colliderect(collision_box) == True:
+				collision = True
+				break
+		for k, logistic in enumerate(LOGISTICS):
+			if isinstance(logistic, RobotArm):
+				if logistic.rect.colliderect(collision_box) == True:
+					collision = True
+					break
 	return collision
 
 def generate_ID():
@@ -675,6 +688,8 @@ def main():
 	MACHINES.append(box_adder1)
 	box_adder2 = ProductAdder((175,50), "horizontal", "boxes")
 	MACHINES.append(box_adder2)
+	box_adder3 = ProductAdder((225,200), "horizontal", "boxes")
+	MACHINES.append(box_adder3)
 	bottle_adder1 = ProductAdder((100,0), "vertical", "bottles")
 	MACHINES.append(bottle_adder1)
 	bottle_adder2 = ProductAdder((350,100), "vertical", "bottles")
@@ -685,7 +700,7 @@ def main():
 
 	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
 	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,150)]
-	roller_coordinates3 = [(275,150), (250,150), (250,175), (300,125)]
+	roller_coordinates3 = [(275,150), (250,150), (250,175), (250,200), (300,125)]
 	merged_lists = roller_coordinates+roller_coordinates2+roller_coordinates3
 	for i in range(0,len(merged_lists)):
 		new_roller = RollerConveyor(merged_lists[i])
@@ -695,11 +710,6 @@ def main():
 	robotArm1 = RobotArm((300,150), "up")
 	LOGISTICS.append(robotArm1)
 
-
-	box1 = Box((75,50))
-	PRODUCTS.append(box1)
-	bottles1 = Bottles((350,75))
-	PRODUCTS.append(bottles1)
 	SPAWNTIMER, t = pygame.USEREVENT+1, 5000
 	pygame.time.set_timer(SPAWNTIMER, t)
 	CHECKTIMER, t2 = pygame.USEREVENT+2, 800
@@ -707,18 +717,22 @@ def main():
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
+	print("/--- Automatic interface and orientation detection in progress, please wait")
 	for j in range(0,len(LOGISTICS)+1):
 		for i,entity in enumerate(LOGISTICS):
 			if isinstance(entity, Conveyor):
 				entity.get_interfaces()
 				entity.check_orientation()	
+	print("o/-- Automatic interface and orientation detection in progress, please wait")
 	for j in range(0,len(LOGISTICS)+1):
 		for i,entity in enumerate(LOGISTICS):
 			if isinstance(entity, Conveyor):
 				entity.get_interfaces()
 				entity.check_orientation()	
+	print("oo/- Automatic interface and orientation detection in progress, please wait")
 	for i, machine in enumerate(MACHINES):
 			machine.get_interfaces()
+	print("ooo/ Automatic interface and orientation detection finished")
 	while 1:
 		screen.fill(BACKGROUND)
 		create_grid(screen)
