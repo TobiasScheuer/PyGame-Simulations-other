@@ -3,7 +3,7 @@ import pygame.gfxdraw
 import random
 
 """
-TODO: Fix input/output detection (see conveyors left of robot), adapt robot grab coordinates
+TODO: adapt robot grab coordinates
 Goal of this Simulation:
 Visualize a HMI for a 2-D factory including manufacturing machines, intralogistics, productivity stats.
 [3-D factory by having floors, switch floor with arrows on display]
@@ -57,6 +57,15 @@ class Resources:
 	"""
 	doc
 	"""
+	
+	def __init__(self, coordinates):
+		self.check_coordinates(coordinates)
+		self.coordinates = coordinates
+		self.ID = generate_ID()
+		IDS[self.ID] = type(self)
+		self.input_rect = list()		# a list of 25x3 rect  
+		self.output_rect = list()		# a list of 25x3 rect  
+
 	def check_coordinates(self, coordinates):
 		if coordinates[0] < 0 or coordinates[0] > WIDTH:
 			raise PlacementError(type(self), coordinates, "horizontal coordinate bounds")
@@ -65,24 +74,6 @@ class Resources:
 		for i, entity in enumerate(LOGISTICS+MACHINES):
 			if coordinates == entity.coordinates:
 				raise PlacementError(type(self), coordinates, entity)
-
-	def generate_ID(self):
-		ID = str(random.randint(1,9999))
-		while len(ID) < 4:
-			ID = "0" + ID
-		while ID in IDS.keys():
-			ID = str(random.randint(1,9999))
-			while len(ID) < 4:
-				ID = "0" + ID
-		self.ID = ID
-
-	def __init__(self, coordinates):
-		self.check_coordinates(coordinates)
-		self.coordinates = coordinates
-		self.generate_ID()
-		IDS[self.ID] = type(self)
-		self.input_rect = list()		# a list of 25x3 rect  
-		self.output_rect = list()		# a list of 25x3 rect  
 
 	def get_interfaces(self):
 		"""
@@ -108,7 +99,6 @@ class Resources:
 							self.output_rect.append(logistic.input_rect[inputlist_indexes[j]])
 					
 
-	
 class Machine(Resources):
 	"""
 	doc
@@ -160,7 +150,7 @@ class ProductAdder(Machine):
 				elif self.output_rect[1] in logistic.input_rect:
 					coordinates = (self.output_rect[1][0], self.output_rect[1][1]-1 )
 			if coordinates != (0,0):
-				self.generate_ID()
+				self.ID = generate_ID()
 				if self.product == "boxes":
 					newProduct = Box(coordinates)
 					collision_box = pygame.Rect(coordinates, newProduct.size)
@@ -215,30 +205,32 @@ class Conveyor(Logistics):
 
 	def check_orientation(self):
 		if self.direction == None:
-			if len(self.input_rect) == 0:
+			left_interface = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
+			right_interface = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
+			up_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
+			down_interface = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
+			possible_neighbours = [(self.coordinates[0]-25,self.coordinates[1]), (self.coordinates[0]+25,self.coordinates[1]), (self.coordinates[0],self.coordinates[1]+25), (self.coordinates[0],self.coordinates[1]-25)]
+			hits = list()
+			combinedlist = LOGISTICS+MACHINES
+			for i, entity in enumerate(combinedlist):
+				if entity.coordinates in possible_neighbours:
+					hits.append(entity.coordinates)
+			if len(hits) > 2 and isinstance(self, RollerConveyor) and isinstance(self, TIntersection) == False: #1D Roller Conveyor supposed to only have 2 neighbors
+				raise PlacementError(type(self), self.coordinates, "too many neighbours")
+			elif len(hits) <= 0:
 				pass
-			elif len(self.input_rect) == 1:
-				input = self.input_rect[0]
-				possible_neighbours = [(self.coordinates[0]-25,self.coordinates[1]), (self.coordinates[0]+25,self.coordinates[1]), (self.coordinates[0],self.coordinates[1]+25), (self.coordinates[0],self.coordinates[1]-25)]
-				hits = list()
-				for i,logistic in enumerate(LOGISTICS):
-					if logistic.coordinates in possible_neighbours:
-						hits.append(logistic.coordinates)
-				for i, machine in enumerate(MACHINES):
-					if machine.coordinates in possible_neighbours:
-						hits.append(machine.coordinates)
-				if len(hits) > 2 and isinstance(self, RollerConveyor): #1D Roller Conveyor supposed to only have 2 neighbors
-					raise PlacementError(type(self), self.coordinates, "too many neighbours")
-				elif len(hits) <= 0:
+			else:
+				if len(self.input_rect) == 0:
 					pass
-				else:
+				elif len(self.input_rect) == 1:
+					input = self.input_rect[0]
 					output_rect = False
 					for k in range (0,len(hits)):
 						if hits[k][0] < self.coordinates[0]: # neighbour on left flank
 							if input.left < self.coordinates[0]: # input on left flank
 								pass
 							else: # input not on left flank -> has to be output
-								output_rect = pygame.Rect((self.coordinates[0]-1, self.coordinates[1]),(3,25))
+								output_rect = left_interface
 								self.direction = "left"
 								self.image = pygame.transform.rotate(self.image, 90)
 								self.image1 = pygame.transform.rotate(self.image1, 90)
@@ -247,7 +239,7 @@ class Conveyor(Logistics):
 							if input.left > self.coordinates[0]: # input on the right flank
 								pass
 							else:
-								output_rect = pygame.Rect((self.coordinates[0]+24, self.coordinates[1]),(3,25))
+								output_rect = right_interface
 								self.direction = "right"
 								self.image = pygame.transform.rotate(self.image, 270)
 								self.image1 = pygame.transform.rotate(self.image1, 270)
@@ -256,7 +248,7 @@ class Conveyor(Logistics):
 							if input.top < self.coordinates[1]: # input above
 								pass
 							else:
-								output_rect = pygame.Rect((self.coordinates[0], self.coordinates[1]-1),(25,3))
+								output_rect = up_interface
 								self.direction = "up"
 								#image correct orientation from loading
 								break
@@ -264,7 +256,7 @@ class Conveyor(Logistics):
 							if input.top > self.coordinates[1]:
 								pass
 							else:
-								output_rect = pygame.Rect((self.coordinates[0], self.coordinates[1]+24),(25,3))
+								output_rect = down_interface
 								self.direction = "down"
 								self.image = pygame.transform.flip(self.image, False, True)
 								self.image1 = pygame.transform.flip(self.image1, False, True)
@@ -274,37 +266,81 @@ class Conveyor(Logistics):
 					if not output_rect == False:
 						if output_rect not in self.output_rect: 
 							self.output_rect.append(output_rect)
-			elif len(self.input_rect) == 2:
-				pass
-			elif len(self.input_rect) == 3:
-				if isinstance(self, TIntersection):
-					poss1 = pygame.Rect(self.coordinates[0]-1, self.coordinates[1], 3, 25)
-					poss2 = pygame.Rect(self.coordinates[0]+24, self.coordinates[1], 3, 25)
-					poss3 = pygame.Rect(self.coordinates[0], self.coordinates[1]-1, 25, 3)
-					poss4 = pygame.Rect(self.coordinates[0], self.coordinates[1]+24, 25, 3)
-					possible_interfaces = [poss1, poss2, poss3, poss4]
-					for i in range(0,4):
-						if not possible_interfaces[i] in self.input_rect:
-							self.output_rect.append(possible_interfaces[i])
-							if i == 0:
-								self.direction = "left"
-								self.image = pygame.transform.rotate(self.image, 90)
-								self.image1 = pygame.transform.rotate(self.image1, 90)
-							elif i == 1:
-								self.direction = "right"
-								self.image = pygame.transform.rotate(self.image, 270)
-								self.image1 = pygame.transform.rotate(self.image1, 270)
-							elif i == 2:
-								self.direction = "up"
-								#image correct orientation from loading
-							else:
-								self.direction = "down"
-								self.image = pygame.transform.flip(self.image, False, True)
-								self.image1 = pygame.transform.flip(self.image1, False, True)
-							break
+				elif len(self.input_rect) == 2:
+					pass
+				elif len(self.input_rect) == 3:
+					if isinstance(self, TIntersection):
+						possible_interfaces = [left_interface, right_interface, up_interface, down_interface]
+						for i in range(0,4):
+							if not possible_interfaces[i] in self.input_rect:
+								self.output_rect.append(possible_interfaces[i])
+								if i == 0:
+									self.direction = "left"
+									self.image = pygame.transform.rotate(self.image, 90)
+									self.image1 = pygame.transform.rotate(self.image1, 90)
+								elif i == 1:
+									self.direction = "right"
+									self.image = pygame.transform.rotate(self.image, 270)
+									self.image1 = pygame.transform.rotate(self.image1, 270)
+								elif i == 2:
+									self.direction = "up"
+									#image correct orientation from loading
+								else:
+									self.direction = "down"
+									self.image = pygame.transform.flip(self.image, False, True)
+									self.image1 = pygame.transform.flip(self.image1, False, True)
+								break
+				else:
+					print('error1')
+					# TODO: create actual error
+		if self.direction == None:
+			if len(self.output_rect) == 1:
+				output = self.output_rect[0]
+				if output == left_interface:	# if only output found, turn conveyor towards output 
+					self.direction ="left"
+					self.image = pygame.transform.rotate(self.image, 90)
+					self.image1 = pygame.transform.rotate(self.image1, 90)
+				elif output == right_interface:
+					self.direction = "right"
+					self.image = pygame.transform.rotate(self.image, 270)
+					self.image1 = pygame.transform.rotate(self.image1, 270)
+				elif output == up_interface:
+					self.direction = "up"
+					#image correct orientation from loading
+				elif output == down_interface:
+					self.direction = "down"
+					self.image = pygame.transform.flip(self.image, False, True)
+					self.image1 = pygame.transform.flip(self.image1, False, True)
+				input_rect = False
+				for k in range (0,len(hits)):
+					if hits[k][0] < self.coordinates[0]: # neighbour on left flank
+						if output.left < self.coordinates[0]: # ouput on left flank
+							pass
+						else: # output not on left flank -> has to be input
+							input_rect = left_interface
+					elif hits[k][0] > self.coordinates[0]: # neighbour on the right flank
+						if output.left > self.coordinates[0]: # output on the right flank
+							pass
+						else:
+							input_rect = right_interface
+					elif hits[k][1] < self.coordinates[1]: # neighbour above
+						if output.top < self.coordinates[1]: # output above
+							pass
+						else:
+							input_rect = up_interface
+					elif hits[k][1] > self.coordinates[1]: # neighbour below
+						if output.top > self.coordinates[1]: # output below
+							pass
+						else:
+							input_rect = down_interface
+					else:
+						print('error3')
+				if not input_rect == False:
+					if input_rect not in self.input_rect: 
+						self.input_rect.append(input_rect)
 			else:
-				print('error1')
-				# TODO: create actual error
+				pass
+				#print("error4")
 
 class BeltConveyor(Conveyor):
 	"""
@@ -422,7 +458,6 @@ class RobotArm(Logistics):
 						if self.input_rect[index] == left_interface: # left input
 							if self.image_index == 7:
 								self.grabbed = product.ID
-								product.rect = product.rect.move(5,-1)
 								product.busy = True
 							elif self.image_index in [8,1,2,3]:
 								newindex = self.image_index -1
@@ -437,7 +472,6 @@ class RobotArm(Logistics):
 						elif self.input_rect[index] == right_interface: # right input
 							if self.image_index == 3:
 								self.grabbed = product.ID
-								product.rect = product.rect.move(-5,-1)
 								product.busy = True
 							elif self.image_index in [7,8,1,2]:
 								newindex = self.image_index +1
@@ -452,7 +486,6 @@ class RobotArm(Logistics):
 						elif self.input_rect[index] == up_interface: # upper input
 							if self.image_index == 1:
 								self.grabbed = product.ID
-								product.rect = product.rect.move(0,5)
 								product.busy = True
 							elif self.image_index in [5,6,7,8]:
 								newindex = self.image_index + 1
@@ -467,7 +500,6 @@ class RobotArm(Logistics):
 						elif self.input_rect[index] == down_interface: # lower input
 							if self.image_index == 5:
 								self.grabbed = product.ID
-								product.rect = product.rect.move(0,-5)
 								product.busy = True
 							elif self.image_index in [6,7,8]:
 								newindex = self.image_index - 1
@@ -477,6 +509,24 @@ class RobotArm(Logistics):
 								newindex = self.image_index + 1
 								self.image_index = newindex
 								self.image = self.images[newindex]
+						if not self.grabbed == None:
+							if self.image_index == 1:
+								new_coordinates = (self.rect[0]+5, self.rect[1]-10)
+							elif self.image_index == 2:
+								new_coordinates = (self.rect[0]+10, self.rect[1]-5)
+							elif self.image_index == 3:
+								new_coordinates = (self.rect[0]+18, self.rect[1]-1)
+							elif self.image_index == 4:
+								new_coordinates = (self.rect[0]+10, self.rect[1]+5)
+							elif self.image_index == 5:
+								new_coordinates = (self.rect[0]+5, self.rect[1]+10)
+							elif self.image_index == 6:
+								new_coordinates = (self.rect[0], self.rect[1]+5)
+							elif self.image_index == 7:
+								new_coordinates = (self.rect[0]-5, self.rect[1]-1)
+							elif self.image_index == 8:
+								new_coordinates = (self.rect[0]-10, self.rect[1]-5)
+							product.rect.update(new_coordinates, product.size)
 						break
 
 
@@ -488,7 +538,7 @@ class Product:
 		"""
 		doc
 		"""
-		self.generate_ID()
+		self.ID = generate_ID()
 		IDS[self.ID] = type(self)
 		self.busy = False
 	
@@ -548,19 +598,6 @@ class Product:
 					self.rect.update((machine.coordinates[0]+3, machine.coordinates[1]+3), self.size)
 					self.busy = True
 
-	def generate_ID(self):
-		"""
-		doc
-		"""
-		ID = str(random.randint(1,9999))
-		while len(ID) < 4:
-			ID = "0" + ID
-		while ID in IDS.keys():
-			ID = str(random.randint(1,9999))
-			while len(ID) < 4:
-				ID = "0" + ID
-		self.ID = ID
-
 class Box(Product):
 	"""
 	doc
@@ -603,6 +640,16 @@ def check_collision(own_rect, collision_box):
 			collision = True
 			break
 	return collision
+
+def generate_ID():
+		ID = str(random.randint(1,9999))
+		while len(ID) < 4:
+			ID = "0" + ID
+		while ID in IDS.keys():
+			ID = str(random.randint(1,9999))
+			while len(ID) < 4:
+				ID = "0" + ID
+		return ID
 
 def create_grid(screen):
 	"""
@@ -660,6 +707,11 @@ def main():
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
+	for j in range(0,len(LOGISTICS)+1):
+		for i,entity in enumerate(LOGISTICS):
+			if isinstance(entity, Conveyor):
+				entity.get_interfaces()
+				entity.check_orientation()	
 	for j in range(0,len(LOGISTICS)+1):
 		for i,entity in enumerate(LOGISTICS):
 			if isinstance(entity, Conveyor):
