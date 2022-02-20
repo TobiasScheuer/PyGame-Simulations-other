@@ -3,12 +3,12 @@ import pygame.gfxdraw
 import random
 
 """
-TODO: adapt robot grab coordinates
+
 Goal of this Simulation:
 Visualize a HMI for a 2-D factory including manufacturing machines, intralogistics, productivity stats.
 [3-D factory by having floors, switch floor with arrows on display]
-Either pre-setup or player-based input for layout
-Grid-based system (rectangles are 25x25 pixels)   CHANGE?
+player-based input for layout
+Grid-based system (rectangles are 25x25 pixels)  
 
 Available machines: (add them step by step)
 product-adder
@@ -29,8 +29,8 @@ bottles
 ++V0.1.1 define interfaces and orientation check
 ++V0.2 add empty box
 ++V0.3 add animations to machines, movement to products
-+V0.4 expand setup -> more machines, more conveyors, more boxes, more products, actual production
-V0.5a switch to player based layout
+++V0.4 expand setup -> more machines, more conveyors, more boxes, more products, actual production
+->V0.5a switch to player based layout
 V1.2 decorate HUD
 
 """
@@ -42,6 +42,7 @@ MACHINES = list()
 LOGISTICS = list()
 PRODUCTS = list()
 IDS = dict()
+MARKED = list()
 
 
 class PlacementError(Exception):
@@ -744,6 +745,19 @@ class Bottles(Product):
 		self.rect = pygame.Rect((coordinates[0]+3, coordinates[1]+3), self.size)
 		tempimage = pygame.image.load("res/factory/bottles.png").convert_alpha()
 		self.image = pygame.transform.smoothscale(tempimage, self.size)
+
+class Placeholder():
+	"""
+	doc
+	"""
+	size = (25,25)
+
+	def __init__(self, coordinates):
+		self.rect = pygame.Rect((coordinates[0], coordinates[1]), self.size)
+		self.image = pygame.Surface(self.size, flags=pygame.SRCALPHA)
+		self.image.fill((255, 204, 153, 50))
+
+
 		
 		
 
@@ -802,37 +816,10 @@ def main():
 	global LOGISTICS
 	global PRODUCTS
 	global IDS
+	global MARKED
 	clock = pygame.time.Clock()
 	pygame.init()
 	screen = pygame.display.set_mode((WIDTH, HEIGHT))
-	box_adder1 = ProductAdder((50,50), "horizontal", "boxes")
-	MACHINES.append(box_adder1)
-	#box_adder2 = ProductAdder((175,50), "horizontal", "boxes")
-	#MACHINES.append(box_adder2)
-	box_adder3 = ProductAdder((225,200), "horizontal", "boxes")
-	MACHINES.append(box_adder3)
-	bottle_adder1 = ProductAdder((100,0), "vertical", "bottles")
-	MACHINES.append(bottle_adder1)
-	bottle_adder2 = ProductAdder((350,100), "vertical", "bottles")
-	MACHINES.append(bottle_adder2)
-	storage1 = StorageUnit((75,150))
-	MACHINES.append(storage1)
-	storage2 = StorageUnit((250,50))
-	MACHINES.append(storage2)
-
-
-	roller_coordinates = [(75,50), (100,75), (100,100), (75,100), (75,125), (125,50), (100,25), (150,50)]
-	roller_coordinates2 = [(350,75), (375,75), (400,75), (400,100), (400,125), (400,150), (375,150), (350,150), (325,150)]
-	roller_coordinates3 = [(275,150), (250,150), (250,175), (250,200), (300,125), (300,100), (275,100), (250,100), (250,75)]
-	roller_coordinates4 = []
-	merged_lists = roller_coordinates+roller_coordinates2+roller_coordinates3+roller_coordinates4
-	for i in range(0,len(merged_lists)):
-		new_roller = RollerConveyor(merged_lists[i])
-		LOGISTICS.append(new_roller)
-	TIntersection1 = TIntersection((100,50), "down")
-	LOGISTICS.append(TIntersection1)
-	robotArm1 = RobotArm((300,150), "up")
-	LOGISTICS.append(robotArm1)
 
 	SPAWNTIMER, t = pygame.USEREVENT+1, 5000
 	pygame.time.set_timer(SPAWNTIMER, t)
@@ -841,22 +828,7 @@ def main():
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
 	counter = 0
-	print("/--- Automatic interface and orientation detection in progress, please wait")
-	for j in range(0,len(LOGISTICS)+1):
-		for i,entity in enumerate(LOGISTICS):
-			if isinstance(entity, Conveyor):
-				entity.get_interfaces()
-				entity.check_orientation()	
-	print("o/-- Automatic interface and orientation detection in progress, please wait")
-	for j in range(0,len(LOGISTICS)+1):
-		for i,entity in enumerate(LOGISTICS):
-			if isinstance(entity, Conveyor):
-				entity.get_interfaces()
-				entity.check_orientation()	
-	print("oo/- Automatic interface and orientation detection in progress, please wait")
-	for i, machine in enumerate(MACHINES):
-			machine.get_interfaces()
-	print("ooo/ Automatic interface and orientation detection finished")
+	mouse_down = False
 	while 1:
 		screen.fill(BACKGROUND)
 		create_grid(screen)
@@ -870,6 +842,26 @@ def main():
 				for i, logistic in enumerate(LOGISTICS):
 					if isinstance(logistic, RobotArm):
 						logistic.update()
+			if event.type == pygame.MOUSEBUTTONDOWN:
+				mouse_down = True
+			if event.type == pygame.MOUSEBUTTONUP:
+				mouse_down = False
+		if mouse_down == True:
+			mouse_position = pygame.mouse.get_pos()
+			temp_x = (int(mouse_position[0]/25 )) *25
+			temp_y = (int(mouse_position[1]/25 )) *25
+			color_here = screen.get_at((temp_x, temp_y))
+			if color_here == BACKGROUND or color_here == (157,157,157):
+				temp_rect = Placeholder((temp_x, temp_y))
+				MARKED.append(temp_rect)
+			else:
+				print(screen.get_at((temp_x, temp_y)))
+			print(MARKED)
+				
+				
+
+		for i,placeholder in enumerate(MARKED):
+				screen.blit(placeholder.image, placeholder.rect)
 		for i,machine in enumerate(MACHINES):
 				screen.blit(machine.image, machine.rect)
 		if counter == 0:
