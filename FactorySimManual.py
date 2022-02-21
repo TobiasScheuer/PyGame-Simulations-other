@@ -35,7 +35,9 @@ V1.2 decorate HUD
 
 """
 
-WIDTH = 1000	# make sure this matches a factor of block_size from function create_grid! (does right now)
+
+WIDTH = 900	# make sure this matches a factor of block_size from function create_grid! (does right now)
+SCREENWIDTH = 1100
 HEIGHT = 400	# make sure this matches a factor of block_size from function create_grid! (does right now)
 BACKGROUND = (255, 255, 255)
 MACHINES = list()
@@ -43,6 +45,7 @@ LOGISTICS = list()
 PRODUCTS = list()
 IDS = dict()
 MARKED = list()
+BUTTONS = list()
 
 
 class PlacementError(Exception):
@@ -753,12 +756,34 @@ class Placeholder():
 	size = (25,25)
 
 	def __init__(self, coordinates):
-		self.rect = pygame.Rect((coordinates[0], coordinates[1]), self.size)
+		self.rect = pygame.Rect(coordinates, self.size)
 		self.image = pygame.Surface(self.size, flags=pygame.SRCALPHA)
-		self.image.fill((255, 204, 153, 50))
+		self.image.fill((255, 204, 153, 110))
 
+class Button():
+	"""
+	doc
+	"""
+	def __init__(self, coordinates, size, buttontype):
+		self.size = size
+		self.rect = pygame.Rect(coordinates, self.size)
+		if buttontype == "Run":
+			tempimage = pygame.image.load("res/buttons/Button_Run.png").convert()
 
-		
+		self.image = pygame.transform.smoothscale(tempimage, self.size)
+
+def initiate_cursors():
+	"""
+	doc
+	"""
+	size = (20,20)
+	tempimage = pygame.image.load("res/buttons/glove.png").convert_alpha()
+	image_open = pygame.transform.smoothscale(tempimage, size)
+	tempimage = pygame.image.load("res/buttons/glove_closed.png").convert_alpha()
+	image_closed = pygame.transform.smoothscale(tempimage, size)
+	cursor_open = pygame.cursors.Cursor((5,5), image_open)
+	cursor_closed = pygame.cursors.Cursor((5,5), image_closed)
+	return [cursor_open, cursor_closed]
 		
 
 def check_collision(own_rect, collision_box, ignore_machines):
@@ -808,7 +833,7 @@ def create_grid(screen):
 	block_size = 25 
 	for z in range(0, int(HEIGHT/block_size)):
 		pygame.gfxdraw.hline(screen, 0, WIDTH, z*block_size, (20,20,20, 60) ) 
-	for x in range(0, int(WIDTH/block_size)):
+	for x in range(0, int(WIDTH/block_size)+1):
 		pygame.gfxdraw.vline(screen, x*block_size, 0, HEIGHT, (20,20,20, 60) )
 
 def main():
@@ -817,9 +842,12 @@ def main():
 	global PRODUCTS
 	global IDS
 	global MARKED
+	global BUTTONS
 	clock = pygame.time.Clock()
 	pygame.init()
-	screen = pygame.display.set_mode((WIDTH, HEIGHT))
+	screen = pygame.display.set_mode((SCREENWIDTH, HEIGHT))
+	cursors = initiate_cursors()
+	pygame.mouse.set_cursor(cursors[0])
 
 	SPAWNTIMER, t = pygame.USEREVENT+1, 5000
 	pygame.time.set_timer(SPAWNTIMER, t)
@@ -827,11 +855,17 @@ def main():
 	pygame.time.set_timer(CHECKTIMER, t2)
 	caption = 'FactorySim'
 	pygame.display.set_caption(caption)
+	run_button = Button((925,300), (150,75), "Run")
+	BUTTONS.append(run_button)
 	counter = 0
 	mouse_down = False
 	while 1:
 		screen.fill(BACKGROUND)
 		create_grid(screen)
+		for i,button in enumerate(BUTTONS):
+			screen.blit(button.image, button.rect)
+		for i,placeholder in enumerate(MARKED):
+				screen.blit(placeholder.image, placeholder.rect)	
 		#print(pygame.event.get())
 		for event in pygame.event.get():
 			if event.type == SPAWNTIMER:
@@ -847,21 +881,23 @@ def main():
 			if event.type == pygame.MOUSEBUTTONUP:
 				mouse_down = False
 		if mouse_down == True:
+			pygame.mouse.set_cursor(cursors[1])
 			mouse_position = pygame.mouse.get_pos()
-			temp_x = (int(mouse_position[0]/25 )) *25
-			temp_y = (int(mouse_position[1]/25 )) *25
-			color_here = screen.get_at((temp_x, temp_y))
-			if color_here == BACKGROUND or color_here == (157,157,157):
-				temp_rect = Placeholder((temp_x, temp_y))
-				MARKED.append(temp_rect)
+			if mouse_position[0] > WIDTH:
+				pass # check for pressed buttons
 			else:
-				print(screen.get_at((temp_x, temp_y)))
-			print(MARKED)
+				temp_x = (int(mouse_position[0]/25 )) *25
+				temp_y = (int(mouse_position[1]/25 )) *25
+				color_here = screen.get_at((mouse_position[0], mouse_position[1]))
+				if color_here == BACKGROUND or color_here == (157,157,157):
+					temp_rect = Placeholder((temp_x, temp_y))
+					MARKED.append(temp_rect)
+				else:
+					print(color_here)
+				#print(MARKED)
+		else:
+			pygame.mouse.set_cursor(cursors[0])
 				
-				
-
-		for i,placeholder in enumerate(MARKED):
-				screen.blit(placeholder.image, placeholder.rect)
 		for i,machine in enumerate(MACHINES):
 				screen.blit(machine.image, machine.rect)
 		if counter == 0:

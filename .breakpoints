@@ -1,3 +1,12 @@
 {
-  "files": {}
+  "files": {
+    "FactorySimManual.py": [
+      {
+        "id": "b6c3b876-1fea-4e0d-b3d4-f72090714f36",
+        "line": 875,
+        "version": 1450,
+        "index": 31645
+      }
+    ]
+  }
 }
