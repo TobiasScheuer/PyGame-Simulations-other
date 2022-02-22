@@ -49,7 +49,7 @@ class PlacementError(Exception):
 		machine = str(machinetype)
 		machine = machine.split('.')[1]
 		machine = machine.split('\'')[0]
-		if isinstance(entity, str) == False:
+		if isinstance(entity, str) is False:
 			entity = str(entity)
 		print("Can't place " + machine + " at " + str(coordinates) + ", because of " + entity)
 
@@ -157,7 +157,7 @@ class ProductAdder(Machine):
 					newProduct = Bottles(coordinates)
 					collision_box = pygame.Rect(coordinates, newProduct.size)
 				collision = check_collision(self.rect, collision_box, True)
-				if collision == False:
+				if collision is False:
 					PRODUCTS.append(newProduct)
 					counter += 1
 				else:
@@ -218,7 +218,7 @@ class Conveyor(Logistics):
 			for i, entity in enumerate(combinedlist):
 				if entity.coordinates in possible_neighbours:
 					hits.append(entity.coordinates)
-			if len(hits) > 2 and isinstance(self, RollerConveyor) and isinstance(self, TIntersection) == False: #1D Roller Conveyor supposed to only have 2 neighbors
+			if len(hits) > 2 and isinstance(self, RollerConveyor) and isinstance(self, TIntersection) is False: #1D Roller Conveyor supposed to only have 2 neighbors
 				raise PlacementError(type(self), self.coordinates, "too many neighbours")
 			elif len(hits) <= 0:
 				pass
@@ -266,7 +266,7 @@ class Conveyor(Logistics):
 								break
 						else:
 							print('error3')
-					if not output_rect == False:
+					if not output_rect is False:
 						if output_rect not in self.output_rect: 
 							self.output_rect.append(output_rect)
 				elif len(self.input_rect) == 2:
@@ -338,7 +338,7 @@ class Conveyor(Logistics):
 							input_rect = down_interface
 					else:
 						print('error3')
-				if not input_rect == False:
+				if not input_rect is False:
 					if input_rect not in self.input_rect: 
 						self.input_rect.append(input_rect)
 			else:
@@ -664,7 +664,7 @@ class Product:
 		"""
 		doc
 		"""
-		if self.busy == False:
+		if self.busy is False:
 			upc = 0
 			downc = 0
 			leftc = 0
@@ -682,14 +682,14 @@ class Product:
 							if upc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1]-1, self.size[0], self.size[1]+1)
 								collision = check_collision(self.rect, collision_box, False)
-								if collision == False:
+								if collision is False:
 									self.rect = self.rect.move(0,-1)
 								upc += 1
 						elif logistic.direction == "down":
 							if downc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0], self.size[1]+1)
 								collision = check_collision(self.rect, collision_box, False)
-								if collision == False:
+								if collision is False:
 									self.rect = self.rect.move(0,1)
 								downc += 1
 				else:   # direction == left or right
@@ -699,14 +699,14 @@ class Product:
 							if leftc == 0:
 								collision_box = pygame.Rect(self.rect[0]-1, self.rect[1], self.size[0]+1, self.size[1])
 								collision = check_collision(self.rect, collision_box, False)
-								if collision == False:
+								if collision is False:
 									self.rect = self.rect.move(-1,0)
 								leftc += 1
 						elif logistic.direction == "right":
 							if rightc == 0:
 								collision_box = pygame.Rect(self.rect[0], self.rect[1], self.size[0]+1, self.size[1])
 								collision = check_collision(self.rect, collision_box, False, )
-								if collision == False:
+								if collision is False:
 									self.rect = self.rect.move(1,0)
 								rightc += 1
 			machine_index = self.rect.collidelist(MACHINES)
@@ -760,17 +760,17 @@ def check_collision(own_rect, collision_box, ignore_machines):
 	"""
 	collision = False
 	for i, product in enumerate(PRODUCTS):
-		if product.rect.colliderect(collision_box) == True and not product.rect == own_rect:
+		if product.rect.colliderect(collision_box) is True and not product.rect == own_rect:
 			collision = True
 			break
-	if ignore_machines == False:
+	if ignore_machines is False:
 		for j, machine in enumerate(MACHINES):
-			if machine.rect.colliderect(collision_box) == True:
+			if machine.rect.colliderect(collision_box) is True:
 				collision = True
 				break
 		for k, logistic in enumerate(LOGISTICS):
 			if isinstance(logistic, RobotArm):
-				if logistic.rect.colliderect(collision_box) == True:
+				if logistic.rect.colliderect(collision_box) is True:
 					collision = True
 					break
 	return collision

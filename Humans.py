@@ -125,7 +125,7 @@ class HomoSapiens:
 				if house.coordinates[1] in range(self.coordinates[1]-65, self.coordinates[1]+66):
 					houseClose = True
 					break
-		if houseClose == False:
+		if houseClose is False:
 			#closeToEdge = False
 			if self.coordinates[0] in range(0,21) or self.coordinates[0] in range(WIDTH-20, WIDTH+1):
 				#closeToEdge = True
@@ -134,7 +134,7 @@ class HomoSapiens:
 				#closeToEdge = True
 				pass
 			else:
-			#if closeToEdge == False:
+			#if closeToEdge is False:
 				newHouse = House(self.coordinates, self.team)
 				HOUSES.append(newHouse)
 				STATS['Houses'] = STATS['Houses'] + 1
@@ -148,13 +148,13 @@ class HomoSapiens:
 		movedThisTurn = False
 		for i, human in enumerate(HUMANS): 
 			if human.team != self.team: 
-				if human.coordinates[0] in range(minX, maxX) and human.coordinates[1] in range(minY, maxY) and human.alive == True:
+				if human.coordinates[0] in range(minX, maxX) and human.coordinates[1] in range(minY, maxY) and human.alive is True:
 					movedThisTurn = True
 					self.eventless = 0
 					chaser = random.randint (1,7)	# simplified approach to not have both humans chase each other, as these leads to both moving in parallel
 					if chaser == 1:
 						Caught = self.chase(human.coordinates)	# moves towards other human
-						if Caught == True:
+						if Caught is True:
 							winner = random.randint(1,2)
 							if winner == 1:
 								human.alive = False
@@ -166,22 +166,22 @@ class HomoSapiens:
 							STATS['KILLS'] = STATS['KILLS'] + 1
 							Caught = 0
 						break
-			elif movedThisTurn == False and self.coordinates != human.coordinates: # no enemies near, same team, not itself
-				if human.coordinates[0] in range(minX, maxX) and human.coordinates[1] in range(minY, maxY) and human.alive == True:
+			elif movedThisTurn is False and self.coordinates != human.coordinates: # no enemies near, same team, not itself
+				if human.coordinates[0] in range(minX, maxX) and human.coordinates[1] in range(minY, maxY) and human.alive is True:
 					self.eventless = self.eventless + 1
 					chaser = random.randint (1,11)	# simplified approach to not have both humans chase each other, as these leads to both moving in parallel
 					if chaser == 1:
 						movedThisTurn = True
 						self.avoid (human.coordinates)
 					break
-		if movedThisTurn == False: #  no human found, check for houses to attack or move randomly
+		if movedThisTurn is False: #  no human found, check for houses to attack or move randomly
 				for l, house in enumerate(HOUSES):
 					if house.coordinates[0] in range(minX-100, maxX+100) and house.coordinates[1] in range(minY-100, maxY+100):
 						if house.team != self.team:
 							self.chase(house.coordinates)
 							movedThisTurn = True
 							break 
-		if movedThisTurn == False: # move randomly
+		if movedThisTurn is False: # move randomly
 			self.eventless = self.eventless + 1
 			if self.eventless > 450:
 				chance = random.randint(1,7)

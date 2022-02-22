@@ -166,10 +166,10 @@ class wolf(animal):
 				if chaser == 1:
 					for animal in enumerate(ANIMALS): 
 						if isinstance(animal[1], wolf) and animal[1].repTime > self.repRate: # checks for other mate-ready animals
-							if animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive == True:
+							if animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive is True:
 								Caught = self.chase(animal[1].coordinates)	# moves towards mate-ready animal
 								found = True
-								if Caught == True:
+								if Caught is True:
 									tempOffspring = 0
 									if self.calReserve > CALMAX-200:
 										tempOffspring = self.offspring + 2
@@ -190,7 +190,7 @@ class wolf(animal):
 									self.speed = 2
 									Caught = 0
 								break
-				if found == False: #  no animal found, move randomly
+				if found is False: #  no animal found, move randomly
 						self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-2,3), oldCoordinates[1]+self.speed*random.randrange(-2,3) ]
 						self.checkCoor()
 			elif self.calReserve < CALMAX-100:	# wolf: chasing mode
@@ -200,10 +200,10 @@ class wolf(animal):
 				maxY = self.coordinates[1] + self.perception + 1
 				found = False
 				for animal in enumerate(ANIMALS):
-					if isinstance(animal[1], rabbit) and animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive == True:
+					if isinstance(animal[1], rabbit) and animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive is True:
 						found = True
 						Caught = self.chase(animal[1].coordinates)
-						if Caught == True:
+						if Caught is True:
 							animal[1].alive = False
 							self.calReserve = self.calReserve + 700
 							if self.calReserve > CALMAX:
@@ -213,7 +213,7 @@ class wolf(animal):
 							STATS['rabbits eaten'] = STATS['rabbits eaten'] + 1
 							STATS['rabbits'] = STATS['rabbits'] - 1
 						break
-				if found == False:
+				if found is False:
 					self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-2,3), oldCoordinates[1]+self.speed*random.randrange(-2,3) ]
 					self.checkCoor()
 			
@@ -257,12 +257,12 @@ class rabbit(animal):
 			fleeing = False
 			if self.calReserve < CALMAX-300 - 500: # if not close to starving, check if there's a need to flee
 				for animal in enumerate(ANIMALS): #if wolf close, flee
-					if isinstance(animal[1], wolf) and animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive == True:
+					if isinstance(animal[1], wolf) and animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive is True:
 						# run you fool!
 						fleeing = True
 						self.avoid(animal[1].coordinates)
 						break				
-			if fleeing == False:
+			if fleeing is False:
 				if self.repTime > self.repRate:	# rabbit: mating mode
 					self.speed = 2
 					minX = self.coordinates[0] - self.perception - 20
@@ -274,10 +274,10 @@ class rabbit(animal):
 					if chaser == 2:
 						for animal in enumerate(ANIMALS): 
 							if isinstance(animal[1], rabbit) and animal[1].repTime > self.repRate: # checks for other mate-ready animals
-								if animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive == True:
+								if animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive is True:
 									found = True
 									Caught = self.chase(animal[1].coordinates)	# moves towards mate-ready animal
-									if Caught == True:
+									if Caught is True:
 										tempOffspring = 0
 										if self.calReserve > CALMAX-300-150:
 											tempOffspring = self.offspring + 2
@@ -297,7 +297,7 @@ class rabbit(animal):
 										Caught = 0
 										self.speed = 1
 									break
-					if found == False: #  no animal found, move randomly
+					if found is False: #  no animal found, move randomly
 						self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-3,4), oldCoordinates[1]+self.speed*random.randrange(-3,4) ]
 						self.checkCoor()
 				elif self.calReserve < CALMAX-300 - 100:	# rabbit hungry
@@ -309,10 +309,10 @@ class rabbit(animal):
 					Caught = False
 					plantIndex = 0
 					for i, plant in enumerate(PLANTS):
-						if plant.coordinates[0] in range(minX, maxX) and plant.coordinates[1] in range(minY, maxY) and plant.alive == True:
+						if plant.coordinates[0] in range(minX, maxX) and plant.coordinates[1] in range(minY, maxY) and plant.alive is True:
 							found = True
 							Caught = self.chase(plant.coordinates)
-							if Caught == True:
+							if Caught is True:
 								#plant.alive = False
 								plantIndex = i
 								self.calReserve = self.calReserve + 320
@@ -320,10 +320,10 @@ class rabbit(animal):
 									self.calReserve = CALMAX - 300
 								COUNTER = COUNTER + 1
 							break			
-					if found == False:
+					if found is False:
 						self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-2,3), oldCoordinates[1]+self.speed*random.randrange(-2,3) ]
 						self.checkCoor()
-					if Caught == True:
+					if Caught is True:
 						PLANTS.pop(plantIndex)
 				
 				else:	#rabbit: move randomly
@@ -371,7 +371,7 @@ class plantClass:
 					skip = True
 				elif newCoordinates[1] <= 0:
 					skip = True
-				if skip == False:
+				if skip is False:
 					newPlant = plantClass(len(PLANTS)+1, (10,85,10), newCoordinates)							
 					PLANTS.append(newPlant)
 			self.repTime = 0

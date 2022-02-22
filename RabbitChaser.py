@@ -116,7 +116,7 @@ class animal:
 			self.coordinates[1] = random.randint(1,3) + self.size[1]
 		if screen.get_at(self.coordinates) == BACKGROUND or screen.get_at(self.coordinates) == NOVISION:
 			reTry = False
-		while reTry == True:
+		while reTry is True:
 			# checks if pixel background color (->empty) or plant color 
 			oldCoordinates = self.coordinates
 			self.coordinates = [oldCoordinates[0]+random.randrange(-2,3), oldCoordinates[1]+random.randrange(-2,3) ]
@@ -220,7 +220,7 @@ class rabbit(animal):
 				self.image = IMAGES['rabbit_fleeing_right']
 			else:
 				self.image = IMAGES['rabbit_fleeing_left']
-		if fleeing == False:
+		if fleeing is False:
 			self.speed = 1
 			if not self.image == IMAGES['rabbit_chill']	:
 				self.image = IMAGES['rabbit_chill']	
@@ -235,10 +235,10 @@ class rabbit(animal):
 				if chaser == 2:
 					for animal in enumerate(RABBITS): 
 						if isinstance(animal[1], rabbit) and animal[1].repTime > self.repRate: # checks for other mate-ready RABBITS
-							if animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive == True:
+							if animal[1].coordinates[0] in range(minX, maxX) and animal[1].coordinates[1] in range(minY, maxY) and animal[1].alive is True:
 								found = True
 								Caught = self.chase(animal[1].coordinates)	# moves towards mate-ready animal
-								if Caught == True:
+								if Caught is True:
 									for i in range (0, self.offspring):
 										newRabbit = rabbit(len(RABBITS)+1, (255,0,0), self.coordinates)							
 										RABBITS.append(newRabbit)
@@ -247,7 +247,7 @@ class rabbit(animal):
 									animal[1].repTime = 0
 									Caught = 0
 								break
-				if found == False: #  no animal found, move randomly
+				if found is False: #  no animal found, move randomly
 					self.coordinates = [oldCoordinates[0]+self.speed*random.randrange(-3,4), oldCoordinates[1]+self.speed*random.randrange(-3,4) ]
 					self.checkCoor()
 			else:	#rabbit: move randomly
@@ -329,16 +329,16 @@ def main():
 		WOLF.update()
 		pygame.display.flip()
 		Keys = pygame.key.get_pressed()
-		if Keys[pygame.K_w] == True:
+		if Keys[pygame.K_w] is True:
 			WOLF.coordinates[1] = WOLF.coordinates[1] - WOLF.speed
 			WOLF.checkBorders()
-		if Keys[pygame.K_s] == True:
+		if Keys[pygame.K_s] is True:
 			WOLF.coordinates[1] = WOLF.coordinates[1] + WOLF.speed
 			WOLF.checkBorders()
-		if Keys[pygame.K_a] == True:
+		if Keys[pygame.K_a] is True:
 			WOLF.coordinates[0] = WOLF.coordinates[0] - WOLF.speed
 			WOLF.checkBorders()
-		if Keys[pygame.K_d] == True:
+		if Keys[pygame.K_d] is True:
 			WOLF.coordinates[0] = WOLF.coordinates[0] + WOLF.speed
 			WOLF.checkBorders()
 		clock.tick(25)
